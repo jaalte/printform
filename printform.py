@@ -110,19 +110,25 @@ def generate_label():
     for name in fieldnames:
         data[name] = request.form[name]
     
-    
+    print(data)
+
+    sanitized_data = [sanitize_string(value).lower() for value in data.values()]
+    print(sanitized_data)
 
     img = generate_png(template)
     save_to_csv(fieldnames)
 
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    filename = 'label_' + '-'.join(sanitized_data) + '-' + timestamp + '.png'
+
     # Save the image to the 'static/generated_labels' directory with a unique filename
-    timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
-    image_path = f'static/generated_labels/label_{timestamp}.png'
+    image_path = f'static/generated_labels/{filename}'
     os.makedirs('static/generated_labels', exist_ok=True)
     img.save(image_path)
 
     # Return the relative path of the image to be used in the browser
-    relative_image_path = f'/static/generated_labels/label_{timestamp}.png'
+    relative_image_path = '\\'+image_path
 
     return jsonify({"message": f"Label generated and saved as {relative_image_path}.", "image_path": relative_image_path})
 
