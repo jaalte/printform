@@ -3,6 +3,7 @@ from PIL import Image, ImageDraw, ImageFont
 import os
 import csv
 import json
+import re
 from datetime import datetime
 
 label_base_name = 'label_base.png'
@@ -17,6 +18,9 @@ app = Flask(__name__)
 @app.route('/')
 def index():
     return render_template('index.html')
+
+def sanitize_string(s):
+    return re.sub(r'[^a-zA-Z0-9]', '', s)
 
 def generate_png(template):
 
@@ -95,8 +99,6 @@ def save_to_csv(fieldnames):
 
 @app.route('/generate_label', methods=['POST'])
 def generate_label():
-    #main_text = request.form['main_text']
-    #subtext = request.form['subtext']
 
     # Load the label template
     with open(label_template_name, 'r') as f:
