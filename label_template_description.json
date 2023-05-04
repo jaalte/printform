@@ -1,0 +1,56 @@
+{
+	"offsets": [
+		5,
+		-30
+	],
+    "fields": [
+        {
+            "x": 170,
+            "y": 40,
+			"name": "main_text",
+            "data": {
+                "type": "text",
+                "text": "MAIN_TEXT",
+                "style": {
+                    "font": "arialbd.ttf",
+                    "size": 64,
+                    "bold": false,
+                    "italic": false,
+                    "spacing": 5
+                }
+            }
+        },
+		{
+            "x": 170,
+            "y": 120,
+			"name": "cultivar",
+            "data": {
+                "type": "text",
+                "text": "CULTIVAR",
+                "style": {
+                    "font": "arial.ttf",
+                    "size": 60,
+                    "bold": false,
+                    "italic": false,
+                    "spacing": 1
+                }
+            }
+        },
+        {
+            "x": 170,
+            "y": 195,
+			"name": "subtext",
+            "data": {
+                "type": "text",
+                "text": "SUBTEXT",
+                "style": {
+                    "font": "ariali.ttf",
+                    "size": 56,
+                    "bold": false,
+                    "italic": false,
+                    "spacing": 1
+                }
+            }
+        }
+    ]
+}
