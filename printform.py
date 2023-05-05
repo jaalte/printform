@@ -19,6 +19,49 @@ app = Flask(__name__)
 def index():
     return render_template('index.html')
 
+@app.route('/generate_label', methods=['POST'])
+def generate_label():
+
+    # Load the label template
+    with open(label_template_name, 'r') as f:
+        template = json.load(f)
+
+    fieldnames = [field["name"] for field in template['fields']]
+    
+    template['offsets'] = [0,0]
+
+    template['offsets'][0] = int(request.form['x-offset'])
+    template['offsets'][1] = int(request.form['y-offset'])
+
+    print(template['offsets'])
+
+    formdata = dict()
+    for name in fieldnames:
+        formdata[name] = request.form[name]
+
+    sanitized_formdata = [sanitize_string(value).lower() for value in formdata.values()]
+
+    img = generate_png(template)
+    save_to_csv(fieldnames)
+
+    # Generate filename
+    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
+    filename = 'label_' + '-'.join(sanitized_formdata) + '-' + timestamp + '.png'
+
+    # Save the image to the 'static/generated_labels' directory with a unique filename
+    image_path = f'static/generated_labels/{filename}'
+    os.makedirs('static/generated_labels', exist_ok=True)
+    img.save(image_path)
+
+    # Return the relative path of the image to be used in the browser
+    relative_image_path = '\\'+image_path
+
+    return jsonify({"message": f"Label generated and saved as {relative_image_path}.", "image_path": relative_image_path})
+
+@app.route('/download_image/<path:filename>')
+def download_image(filename):
+    return send_from_directory('static/generated_labels', filename, as_attachment=True, attachment_filename=filename)
+
 def sanitize_string(s):
     return re.sub(r'[^a-zA-Z0-9\s]', '', s).replace(' ', '-')
 
@@ -55,34 +98,38 @@ def generate_png(template):
             font = ImageFont.truetype(font_path, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
 
-    # Initialize a new image with the same dimensions as the original, filled with white color
-    padded_img = Image.new('RGB', (img.width, img.height), (255, 255, 255))
 
-    # Apply the offsets
-    if "offsets" in template:
-        x_offset, y_offset = template["offsets"]
-
-        x_offset = -x_offset
-        y_offset = -y_offset
-
-        # Crop the image based on the offsets
-        left = max(0, x_offset)
-        upper = max(0, y_offset)
-        right = img.width - max(0, -x_offset)
-        lower = img.height - max(0, -y_offset)
-        img = img.crop((left, upper, right, lower))
-
-        # Calculate the paste position
-        paste_x = max(0, -x_offset)
-        paste_y = max(0, -y_offset)
-
-        # Paste the cropped image onto the new image
-        padded_img.paste(img, (paste_x, paste_y))
-        img = padded_img
+    # Apply image offsets
+    dx, dy = template["offsets"]
+    img = offset_image(img,dx,dy)
 
 
     return img
 
+def offset_image(img,dx,dy):
+    # Initialize a new image with the same dimensions as the original, filled with white color
+    offset_img = Image.new('RGB', (img.width, img.height), (255, 255, 255))
+
+    dx = -dx
+    dy = -dy
+
+    # Crop the image based on the offsets
+    left = max(0, dx)
+    upper = max(0, dy)
+    right = img.width - max(0, -dx)
+    lower = img.height - max(0, -dy)
+    img = img.crop((left, upper, right, lower))
+
+    # Calculate the paste position
+    paste_x = max(0, -dx)
+    paste_y = max(0, -dy)
+
+    # Paste the cropped image onto the new image
+    offset_img.paste(img, (paste_x, paste_y))
+    img = offset_img
+
+
+    return img
     
 def save_to_csv(fieldnames):
     with open('print_history.csv', mode='a', newline='') as csvfile:
@@ -96,40 +143,6 @@ def save_to_csv(fieldnames):
         
         writer.writerow(values_dict)
         
-
-
-@app.route('/generate_label', methods=['POST'])
-def generate_label():
-
-    # Load the label template
-    with open(label_template_name, 'r') as f:
-        template = json.load(f)
-
-    fieldnames = [field["name"] for field in template['fields']]
-    
-    data = dict()
-    for name in fieldnames:
-        data[name] = request.form[name]
-
-    sanitized_data = [sanitize_string(value).lower() for value in data.values()]
-
-    img = generate_png(template)
-    save_to_csv(fieldnames)
-
-    # Generate filename
-    timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    filename = 'label_' + '-'.join(sanitized_data) + '-' + timestamp + '.png'
-
-    # Save the image to the 'static/generated_labels' directory with a unique filename
-    image_path = f'static/generated_labels/{filename}'
-    os.makedirs('static/generated_labels', exist_ok=True)
-    img.save(image_path)
-
-    # Return the relative path of the image to be used in the browser
-    relative_image_path = '\\'+image_path
-
-    return jsonify({"message": f"Label generated and saved as {relative_image_path}.", "image_path": relative_image_path})
-
 
 @app.route('/generated_labels/<path:filename>')
 def serve_generated_labels(filename):
