@@ -6,8 +6,8 @@ import json
 import re
 from datetime import datetime
 
-label_base_name = 'label_base_thin.png'
-label_template_name = 'label_template_thin.json'
+label_base_name = '/static/templates/label_base_thin.png'
+label_template_name = '/static/templates/label_template_thin.json'
 
 #label_base_name = 'label_base_thin.png'
 #label_template_name = 'label_template_thin.json'
