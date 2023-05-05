@@ -1,12 +1,9 @@
-function logMessage(message, color) {
-    var log = document.getElementById("message-log");
-    var span = document.createElement("span");
-    if(color) span.style.color = color;
-    span.appendChild(document.createTextNode(message));
-    log.appendChild(span);
-    log.appendChild(document.createElement("br"));
-    log.scrollTop = log.scrollHeight;
-}
+
+
+
+
+
+
 
 
 
@@ -37,4 +34,12 @@ function updateImage() {
 }
 
 
-
+function logMessage(message, color) {
+    var log = document.getElementById("message-log");
+    var span = document.createElement("span");
+    if(color) span.style.color = color;
+    span.appendChild(document.createTextNode(message));
+    log.appendChild(span);
+    log.appendChild(document.createElement("br"));
+    log.scrollTop = log.scrollHeight;
+}
