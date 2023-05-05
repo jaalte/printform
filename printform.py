@@ -6,8 +6,8 @@ import json
 import re
 from datetime import datetime
 
-label_base_name = 'label_base.png'
-label_template_name = 'label_template_description.json'
+label_base_name = 'label_base_thin.png'
+label_template_name = 'label_template_thin.json'
 
 #label_base_name = 'label_base_thin.png'
 #label_template_name = 'label_template_thin.json'
@@ -54,7 +54,7 @@ def generate_label():
     img.save(image_path)
 
     # Return the relative path of the image to be used in the browser
-    relative_image_path = '\\'+image_path
+    relative_image_path = '/'+image_path
 
     return jsonify({"message": f"Label generated and saved as {relative_image_path}.", "image_path": relative_image_path})
 
@@ -98,38 +98,30 @@ def generate_png(template):
             font = ImageFont.truetype(font_path, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
 
-
     # Apply image offsets
     dx, dy = template["offsets"]
     img = offset_image(img,dx,dy)
 
-
     return img
 
 def offset_image(img,dx,dy):
-    # Initialize a new image with the same dimensions as the original, filled with white color
-    offset_img = Image.new('RGB', (img.width, img.height), (255, 255, 255))
-
-    dx = -dx
-    dy = -dy
 
     # Crop the image based on the offsets
-    left = max(0, dx)
-    upper = max(0, dy)
-    right = img.width - max(0, -dx)
-    lower = img.height - max(0, -dy)
-    img = img.crop((left, upper, right, lower))
+    left = max(0, -dx)
+    top = max(0, -dy)
+    right = img.width - max(0, dx)
+    bottom = img.height - max(0, dy)
+    img = img.crop((left, top, right, bottom))
 
     # Calculate the paste position
-    paste_x = max(0, -dx)
-    paste_y = max(0, -dy)
+    paste_x = max(0, dx)
+    paste_y = max(0, dy)
 
-    # Paste the cropped image onto the new image
+    # Paste into a new image with the same dimensions as the original, filled with white color
+    offset_img = Image.new('RGB', (img.width, img.height), (255, 255, 255))
     offset_img.paste(img, (paste_x, paste_y))
-    img = offset_img
 
-
-    return img
+    return offset_img
     
 def save_to_csv(fieldnames):
     with open('print_history.csv', mode='a', newline='') as csvfile:

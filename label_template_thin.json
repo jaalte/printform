@@ -3,6 +3,7 @@
         {
             "x": 136,
             "y": 5,
+            "name": "main_text",
             "data": {
                 "type": "text",
                 "text": "MAIN_TEXT",
@@ -18,6 +19,7 @@
         {
             "x": 136,
             "y": 86,
+            "name": "subtext",
             "data": {
                 "type": "text",
                 "text": "SUBTEXT",
