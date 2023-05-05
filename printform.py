@@ -20,7 +20,8 @@ def index():
     return render_template('index.html')
 
 def sanitize_string(s):
-    return re.sub(r'[^a-zA-Z0-9]', '', s)
+    return re.sub(r'[^a-zA-Z0-9\s]', '', s).replace(' ', '-')
+
 
 def generate_png(template):
 
@@ -109,11 +110,8 @@ def generate_label():
     data = dict()
     for name in fieldnames:
         data[name] = request.form[name]
-    
-    print(data)
 
     sanitized_data = [sanitize_string(value).lower() for value in data.values()]
-    print(sanitized_data)
 
     img = generate_png(template)
     save_to_csv(fieldnames)
