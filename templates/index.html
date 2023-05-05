@@ -2,24 +2,42 @@
 <html>
 <head>
     <title>Plant Tag Printer</title>
-	<style>
-		#label-image {
-			max-width: 500px
-		}
-	</style>
+	<link rel="stylesheet" href="/static/index.css">
+	<script src="/static/index.js"></script>
 </head>
 <body>
     <h1>Plant Tag Printer</h1>
     <form id="label-form" method="POST">
-        <label for="main_text">Main text:</label>
-        <input type="text" id="main_text" name="main_text" required><br><br>
-		<label for="cultivar">Cultivar:</label>
-        <input type="text" id="cultivar" name="cultivar" required><br><br>
-        <label for="subtext">Subtext:</label>
-        <input type="text" id="subtext" name="subtext" required><br><br>
-        <input type="submit" value="Generate Label">
+        <div class="container">
+            <div class="left">
+                <label for="main_text">Main text:</label>
+                <input type="text" id="main_text" name="main_text" required><br><br>
+                <label for="cultivar">Cultivar:</label>
+                <input type="text" id="cultivar" name="cultivar" required><br><br>
+                <label for="subtext">Subtext:</label>
+                <input type="text" id="subtext" name="subtext" required><br><br>
+                <input type="submit" value="Generate Label" id="gen-btn">
+				<input type="button" value="Save as default" id="save-btn">
+                <br><img id="label-image" src="" alt="Generated label" style="display: none;">
+				<br><span id="message"></span>
+            </div>
+            <div class="right">
+                <div id="offset-controls-box">
+                    <div<span style="text-align: center;">Offsets</span></div>
+                    <div>
+                        <label for="x-offset">X:</label>
+                        <input type="number" id="x-offset" name="x-offset" value="0" step="1">
+                        <br>
+                        <label for="y-offset">Y:</label>
+                        <input type="number" id="y-offset" name="y-offset" value="-30" step="1">
+                    </div>
+                </div>
+            </div>
+        </div>
     </form>
-	<img id="label-image" src="" alt="Generated label" style="display: none;">
+	<div class="bottom-pane">
+		<textarea id="message-log" style="height: 100%; width: 100%;" readonly></textarea>
+	</div>
 
 	<script>
 	  document.getElementById('label-form').addEventListener('submit', function (event) {
@@ -36,29 +54,28 @@
 			const labelImage = document.getElementById('label-image');
 			labelImage.src = data.image_path;
 			labelImage.style.display = 'block';
+
+			logMessage(data.message,"#00FF00")
 		  });
 	  });
-	</script>
 
-	
-	<!-- Add this script at the bottom of the index.html file, before the closing </body> tag -->
-	<script>
 	  document.getElementById('label-form').addEventListener('submit', function (event) {
 		event.preventDefault();
 
-		var xhr = new XMLHttpRequest();
-		xhr.open('POST', '/generate_label', true);
-		xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-		xhr.onreadystatechange = function () {
-		  if (this.readyState === XMLHttpRequest.DONE && this.status === 200) {
-			var response = JSON.parse(this.responseText);
-			document.getElementById('generated-label').src = response.image_path;
-		  }
-		};
+		const formData = new FormData(event.target);
 
-		var formData = new FormData(event.target);
-		var encodedData = new URLSearchParams(formData).toString();
-		xhr.send(encodedData);
+		// Triggers a function with the same endpoint in the python script
+		fetch('/update', {
+		  method: 'POST',
+		  body: formData,
+		}) // Some magic to process the resposne
+		  .then((response) => response.json())
+		  .then((data) => {
+			// Works with the returned data
+			const labelImage = document.getElementById('label-image');
+			labelImage.src = data.image_path;
+			labelImage.style.display = 'block';
+		  });
 	  });
 	</script>
 </body>

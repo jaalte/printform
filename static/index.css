@@ -1,0 +1,12 @@
+#label-image {
+    max-width: 500px;
+}
+.container {
+    display: flex;
+}
+.left {
+    flex: 1;
+}
+.right {
+    flex: 1;
+}
