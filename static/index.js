@@ -8,41 +8,33 @@ function logMessage(message, color) {
     log.scrollTop = log.scrollHeight;
 }
 
-document.getElementById('label-form').addEventListener('submit', function (event) {
-    event.preventDefault();
 
-    const formData = new FormData(event.target);
 
-    fetch('/generate_label', {
-      method: 'POST',
-      body: formData,
-    })
-      .then((response) => response.json())
-      .then((data) => {
-        const labelImage = document.getElementById('label-image');
-        labelImage.src = data.image_path;
-        labelImage.style.display = 'block';
+function init() {
+    let inputs = document.getElementsByClassName('input-field')
+    for(input of inputs) {
+        input.addEventListener('input', update);
+    }
 
-        logMessage(data.message,"#00FF00")
-      });
-  });
+    document.getElementById("save-btn").addEventListener('input', saveDefault);
 
-  document.getElementById('label-form').addEventListener('submit', function (event) {
-    event.preventDefault();
+}
+document.addEventListener('DOMContentLoaded', init);
 
-    const formData = new FormData(event.target);
 
-    // Triggers a function with the same endpoint in the python script
-    fetch('/update', {
-      method: 'POST',
-      body: formData,
-    }) // Some magic to process the resposne
-      .then((response) => response.json())
-      .then((data) => {
-        // Works with the returned data
-        const labelImage = document.getElementById('label-image');
-        labelImage.src = data.image_path;
-        labelImage.style.display = 'block';
-      });
-  });
+function saveDefault() {
+    console.log("saveDefault NYI")
+    return true
+}
+
+function update() {
+    updateImage()
+    return true
+}
+
+function updateImage() {
+    console.log("updateImage()")
+}
+
+
 
