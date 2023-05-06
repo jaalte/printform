@@ -58,6 +58,11 @@ def generate_label():
 
     return jsonify({"message": f"Label generated and saved as {relative_image_path}.", "image_path": relative_image_path})
 
+@app.route('/save_image', methods=['POST'])
+def save_image(img,filepath):
+    img.save(filepath)
+    return jsonify({"message": f"Image saved as {filepath}."})
+
 @app.route('/download_image/<path:filename>')
 def download_image(filename):
     return send_from_directory('static/generated_labels', filename, as_attachment=True, attachment_filename=filename)

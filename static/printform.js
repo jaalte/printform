@@ -1,5 +1,5 @@
 
-
+const path = require('path');
 
 var template = {
     "fields": [
@@ -129,17 +129,41 @@ function update() {
 
     tagData = parseInputs()
 
+    labelOffset = [
 
-    updateImage()
+    ]
+
+    updateImage(tagData)
     return true
 }
 
-function updateImage() {
+function updateImage(tagData) {
     console.log("updateImage()")
 
     offsets = [
-
+         document.getElementById("x-offset").value,
+         document.getElementById("y-offset").value,
     ]
+
+    console.log("Offsets: " + offsets)
+
+    filepath = generateFilePath(tagData)
+    print(filepath)
+}
+
+function generateFilePath(tagData) {
+    var sanitizedTagData = Object.values(tagData).map(value => sanitizeString(value).toLowerCase());
+    var timestamp = new Date().toISOString().slice(0, 19).replace(/[-:T]/g, '');
+    var filename = `label_${sanitizedTagData.join('-')}-${timestamp}.png`;
+  
+    var imageDir = '/static/generated_labels/';
+    var imageFilePath = path.join(imageDir, filename);
+    return imageFilePath
+}
+
+function sanitizeString(s) {
+    s = s.toString()
+    return s.replace(/[^a-zA-Z0-9\s]/g, '').replace(/ /g, '-');
 }
 
 
@@ -179,6 +203,27 @@ function processFieldData(fieldElement, index) {
         }
     };
 }
+
+function applyFieldData(fieldElement, fieldData) {
+    const textField = fieldElement.querySelector(".field-text");
+    const positionX = fieldElement.querySelector(".x-pos");
+    const positionY = fieldElement.querySelector(".y-pos");
+    const fontDropdown = fieldElement.querySelector(".font-dropdown");
+    const fontSizeInput = fieldElement.querySelector(".font-size");
+    const boldCheckbox = fieldElement.querySelector(".bold-toggle");
+    const italicCheckbox = fieldElement.querySelector(".italic-toggle");
+    const enabledCheckbox = fieldElement.querySelector(".enable-toggle");
+
+    textField.value = fieldData.data.text;
+    positionX.value = fieldData.x;
+    positionY.value = fieldData.y;
+    fontDropdown.value = fieldData.data.basefont;
+    fontSizeInput.value = fieldData.data.size;
+    boldCheckbox.checked = fieldData.data.bold;
+    italicCheckbox.checked = fieldData.data.italic;
+    enabledCheckbox.checked = fieldData.enabled;
+}
+
  
 function parseInputs() {
     const fieldElements = getFieldElements();
