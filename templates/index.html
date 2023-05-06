@@ -18,8 +18,46 @@
 				<input type="text" id="subtext" name="subtext" class="input-field"><br><br>
 				<input type="submit" value="Generate Label" id="gen-btn">
 				<input type="button" value="Save as default" id="save-btn">
-				<br><img id="label-image" src="" alt="Generated label" style="display: none;">
-				<br><span id="message"></span>
+				<br>
+				<div class="scrollable-box">
+					<div id="fields">
+						<!-- The first field is in the HTML and serves as a template -->
+						<div class="field">
+							<div class="main-section">
+								<label>Text Field</label><br>
+								<input class="field-text" type="text" value="Text">
+							</div>
+							
+							<div class="position-section">
+								<label>Position:</label>
+								<label>X: <input type="number" class="x-pos" value="0" step="1" required></label>
+								<label>Y: <input type="number" class="y-pos" value="0" step="1" required></label>
+							</div>
+							
+							<div class="style-section">
+								<label>Style</label>
+								<div>
+									<select class="font-dropdown" style="max-width: 100px">
+										<option value="arial">Arial</option>
+										<option value="verdana">Verdana</option>
+										<option value="times">Times New Roman</option>
+									</select>
+									<input type="number" value="0" step="1" required>
+								</div>
+								<div>
+									<label><input class="bold-toggle" type="checkbox"> B</label>
+									<label><input class="italic-toggle" type="checkbox"> I</label>
+								</div>
+							</div>
+			
+							<div class="control-section">
+								<label><input type="checkbox"> Toggle</label>
+								<button class="delete-btn" disabled>Delete</button>
+							</div>
+						</div>
+					</div>
+					<button id="addField">Add Field</button>
+				</div>
 			</div>
 			<div class="right">
 				<div id="offset-controls-box">
@@ -34,11 +72,8 @@
 				</div>
 			</div>
 		</div>
+		<img id="label-image" src="" alt="Generated label" style="display: none;">
 	</form>
-	
-	<div class="bottom-pane">
-		<textarea id="message-log" style="height: 100%; width: 100%;" readonly></textarea>
-	</div>
 
 	<script>
 	  document.getElementById('label-form').addEventListener('submit', function (event) {
@@ -56,7 +91,6 @@
 			labelImage.src = data.image_path;
 			labelImage.style.display = 'block';
 
-			logMessage(data.message,"#00FF00")
 		  });
 	  });
 	</script>

@@ -1,3 +1,51 @@
+body {
+    font-family: Arial, sans-serif;
+}
+
+.scrollable-box {
+    width: 100%;
+    max-height: 400px;
+    overflow-y: auto;
+}
+
+.field {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 95%;
+    height: 60px;
+    border: 1px solid #ccc;
+    padding: 10px;
+    margin-bottom: 10px;
+}
+
+.field-text {
+    width: 100%;
+}
+
+.main-section, .position-section, .style-section, .label-section, .control-section {
+    display: flex;
+    flex-direction: column;
+}
+
+.position-section {
+    min-width: 100px;
+}
+
+.style-section {
+    margin-left: 20px;
+}
+
+
+
+input[type=number] {
+    max-width: 40px;
+}
+
+.font-dropdown {
+    margin-bottom: 5px;
+}
+
 #label-image {
     max-width: 500px;
 }
@@ -5,7 +53,8 @@
     display: flex;
 }
 .left {
-    flex: 1;
+
+    width: 80%;
 }
 .right {
     flex: 1;
