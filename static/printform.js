@@ -43,6 +43,7 @@ const fieldTemplate = {
     y: 0,
     id: 0,
     type: "text",
+    enabled: true,
     data: {
         text: "Sample Text",
         basefont: "arial",
@@ -60,6 +61,13 @@ var formData = {
     offset: [0,0]
 }
 
+const fields = document.getElementById("fields");
+const addFieldButton = document.getElementById("addField");
+
+let fieldCounter = 1;
+template = {
+    fields: []
+};
 
 
 function init() {
@@ -69,6 +77,44 @@ function init() {
     }
 
     document.getElementById("save-btn").addEventListener('input', saveDefault);
+
+
+    fields.addEventListener("click", (event) => {
+        if (event.target.classList.contains("delete-btn")) {
+            const field = event.target.closest(".field");
+            fields.removeChild(field);
+            template.fields = template.fields.filter(f => f.id !== parseInt(field.id.split("-")[1]));
+            checkDeleteButtons();
+        }
+    });
+    
+    // Initialize field IDs, event listeners, and delete buttons
+    const initialField = document.querySelector(".field");
+    initialField.id = `field-${fieldCounter}`;
+    template.fields.push({
+        x: 0,
+        y: 0,
+        id: fieldCounter,
+        type: "text",
+        data: {
+            text: "Sample Text",
+            basefont: "arial",
+            size: 48,
+            bold: false,
+            italic: false
+        }
+    });
+    fieldCounter++;
+    
+    // Add event listeners and other logic for the initial field, e.g.:
+    // initialField.querySelector(".field-text").addEventListener("input", (event) => {
+    //     updateTemplate(initialField.id, "text", event.target.value);
+    // });
+    
+    // ...
+    
+    checkDeleteButtons();
+
 
 }
 document.addEventListener('DOMContentLoaded', init);
@@ -81,7 +127,7 @@ function saveDefault() {
 
 function update() {
 
-    
+    tagData = parseInputs()
 
 
     updateImage()
@@ -97,6 +143,54 @@ function updateImage() {
 }
 
 
+// mine
+
+
+
+// its
+
+
+function getFieldElements() {
+    return Array.from(document.querySelectorAll(".field"));
+}
+
+function processFieldData(fieldElement, index) {
+    const textField = fieldElement.querySelector(".field-text");
+    const positionX = fieldElement.querySelector(".x-pos");
+    const positionY = fieldElement.querySelector(".y-pos");
+    const fontDropdown = fieldElement.querySelector(".font-dropdown");
+    const fontSizeInput = fieldElement.querySelector(".font-size");
+    const boldCheckbox = fieldElement.querySelector(".bold-toggle");
+    const italicCheckbox = fieldElement.querySelector(".italic-toggle");
+    const enabledCheckbox = fieldElement.querySelector(".enable-toggle");
+
+    return {
+        x: parseInt(positionX.value),
+        y: parseInt(positionY.value),
+        id: index,
+        type: "text",
+        enabled: enabledCheckbox.checked,
+        data: {
+            text: textField.value,
+            basefont: fontDropdown.value,
+            size: parseInt(fontSizeInput.value),
+            bold: boldCheckbox.checked,
+            italic: italicCheckbox.checked
+        }
+    };
+}
+ 
+function parseInputs() {
+    const fieldElements = getFieldElements();
+    let data = fieldElements.map((fieldElement, index) => processFieldData(fieldElement, index));
+    console.log(data)
+    return data
+}
+
+
+
+
+
 function addNewField(fieldObj) {
 
     if(typeof fieldObj == "undefined") {
@@ -105,15 +199,6 @@ function addNewField(fieldObj) {
 
 }
 
-
-
-const fields = document.getElementById("fields");
-const addFieldButton = document.getElementById("addField");
-
-let fieldCounter = 1;
-template = {
-    fields: []
-};
 
 function createField() {
     const fieldTemplate = document.querySelector(".field");
@@ -157,7 +242,7 @@ addFieldButton.addEventListener("click", () => {
     // ...
 
     fields.appendChild(field);
-    checkDeleteButtons();
+    //checkDeleteButtons();
 });
 
 function checkDeleteButtons() {
@@ -169,38 +254,3 @@ function checkDeleteButtons() {
     }
 }
 
-fields.addEventListener("click", (event) => {
-    if (event.target.classList.contains("delete-btn")) {
-        const field = event.target.closest(".field");
-        fields.removeChild(field);
-        template.fields = template.fields.filter(f => f.id !== parseInt(field.id.split("-")[1]));
-        checkDeleteButtons();
-    }
-});
-
-// Initialize field IDs, event listeners, and delete buttons
-const initialField = document.querySelector(".field");
-initialField.id = `field-${fieldCounter}`;
-template.fields.push({
-    x: 0,
-    y: 0,
-    id: fieldCounter,
-    type: "text",
-    data: {
-        text: "Sample Text",
-        basefont: "arial",
-        size: 48,
-        bold: false,
-        italic: false
-    }
-});
-fieldCounter++;
-
-// Add event listeners and other logic for the initial field, e.g.:
-// initialField.querySelector(".field-text").addEventListener("input", (event) => {
-//     updateTemplate(initialField.id, "text", event.target.value);
-// });
-
-// ...
-
-checkDeleteButtons();
