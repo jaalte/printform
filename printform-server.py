@@ -17,7 +17,7 @@ app = Flask(__name__)
 
 @app.route('/')
 def index():
-    return render_template('index.html')
+    return render_template('printform-client.html')
 
 @app.route('/generate_label', methods=['POST'])
 def generate_label():
