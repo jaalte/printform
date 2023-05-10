@@ -8,7 +8,7 @@ body {
     overflow-y: auto;
 }
 
-.field {
+#field-list {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -25,7 +25,7 @@ body {
 
 .main-section, .position-section, .style-section, .label-section, .control-section {
     display: flex;
-    flex-direction: column;
+    flex-direction: row;
 }
 
 .position-section {
