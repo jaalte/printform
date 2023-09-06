@@ -28,10 +28,10 @@ def generate_label():
 
     fieldnames = [field["name"] for field in template['fields']]
     
-    template['offsets'] = [0,0]
+    #template['offsets'] = [0,0]
 
-    template['offsets'][0] = int(request.form['x-offset'])
-    template['offsets'][1] = int(request.form['y-offset'])
+    template['offsets'][0] += int(request.form['x-offset'])
+    template['offsets'][1] += int(request.form['y-offset'])
 
     print(template['offsets'])
 
@@ -87,20 +87,24 @@ def generate_png(template):
         #if name == 'cultivar': text = f"\'{text}\'"
 
         if data['type'] == 'text':
-            font_path = data['style']['font']
+            font_base = data['style']['font-base']
+            font = ""
             font_size = data['style']['size']
-            # bold = data['style'].get('bold', False)
-            # italic = data['style'].get('italic', False)
+            bold = data['style'].get('bold', False)
+            italic = data['style'].get('italic', False)
             spacing = data['style'].get('spacing', 1)
 
-            # if bold and italic:
-            #     font_path = font_path.replace(".ttf", "bi.ttf")
-            # elif bold:
-            #     font_path = font_path.replace(".ttf", "b.ttf")
-            # elif italic:
-            #     font_path = font_path.replace(".ttf", "i.ttf")
+            if bold and italic:
+                font = font_base.replace(".ttf", "bi.ttf")
+            elif bold:
+                font = font_base.replace(".ttf", "bd.ttf")
+            elif italic:
+                font = font_base.replace(".ttf", "i.ttf")
+            else:
+                font = font_base
+            print(font)
 
-            font = ImageFont.truetype(font_path, font_size)
+            font = ImageFont.truetype(font, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
 
     # Apply image offsets

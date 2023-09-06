@@ -1,4 +1,5 @@
 {
+    "offsets": [50,-20],
     "fields": [
         {
             "x": 170,
@@ -8,9 +9,9 @@
                 "type": "text",
                 "text": "MAIN_TEXT",
                 "style": {
-                    "font": "arialbi.ttf",
+                    "font-base": "arial.ttf",
                     "size": 64,
-                    "bold": false,
+                    "bold": true,
                     "italic": false,
                     "spacing": 5
                 }
@@ -24,10 +25,10 @@
                 "type": "text",
                 "text": "SUBTEXT",
                 "style": {
-                    "font": "arial.ttf",
+                    "font-base": "arial.ttf",
                     "size": 56,
                     "bold": false,
-                    "italic": false,
+                    "italic": true,
                     "spacing": 1
                 }
             }
