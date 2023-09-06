@@ -109,14 +109,13 @@ def generate_png(template):
 
     return img
 
-def offset_image(img,dx,dy):
-
+def offset_image(img, dx, dy):
     # Crop the image based on the offsets
     left = max(0, -dx)
     top = max(0, -dy)
     right = img.width - max(0, dx)
     bottom = img.height - max(0, dy)
-    img = img.crop((left, top, right, bottom))
+    cropped_img = img.crop((left, top, right, bottom))
 
     # Calculate the paste position
     paste_x = max(0, dx)
@@ -124,7 +123,7 @@ def offset_image(img,dx,dy):
 
     # Paste into a new image with the same dimensions as the original, filled with white color
     offset_img = Image.new('RGB', (img.width, img.height), (255, 255, 255))
-    offset_img.paste(img, (paste_x, paste_y))
+    offset_img.paste(cropped_img, (paste_x, paste_y))
 
     return offset_img
     
