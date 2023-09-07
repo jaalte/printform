@@ -5,6 +5,7 @@ import csv
 import json
 import re
 from datetime import datetime
+import codecs
 
 label_base_name = 'static/label-templates/label_base.png'
 label_template_name = 'static/label-templates/label_template.json'
@@ -33,11 +34,13 @@ def generate_label():
     template['offsets'][0] += int(request.form['x-offset'])
     template['offsets'][1] += int(request.form['y-offset'])
 
-    print(template['offsets'])
-
     formdata = dict()
     for name in fieldnames:
         formdata[name] = request.form[name]
+
+    print(formdata)
+
+
 
     sanitized_formdata = [sanitize_string(value).lower() for value in formdata.values()]
 
@@ -69,6 +72,9 @@ def download_image(filename):
 
 def sanitize_string(s):
     return re.sub(r'[^a-zA-Z0-9\s]', '', s).replace(' ', '-')
+
+def unescape_string(s):
+    return codecs.decode(s, 'unicode_escape')
 
 
 def generate_png(template):
@@ -106,6 +112,7 @@ def generate_png(template):
 
             font = ImageFont.truetype(font, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
+            #custom_draw_text(d, (x,y), text, font, fill=(0,0,0))
 
     # Apply image offsets
     dx, dy = template["offsets"]
@@ -130,7 +137,20 @@ def offset_image(img, dx, dy):
     offset_img.paste(cropped_img, (paste_x, paste_y))
 
     return offset_img
-    
+
+def custom_draw_text(draw, position, text, font, fill=(0, 0, 0), spacing=4, tab_width=4):
+    x, y = position
+    original_x = x
+    for char in text:
+        if char == '\n':
+            y += font.getsize("A")[1] + spacing  # Move down one line
+            x = original_x  # Reset x position
+        elif char == '\t':
+            x += font.getsize(' ' * tab_width)[0]  # Move right for a tab
+        else:
+            draw.text((x, y), char, font=font, fill=fill)
+            x += font.getsize(char)[0]  # Update x position based on character width
+
 def save_to_csv(fieldnames):
     with open('print_history.csv', mode='a', newline='') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
