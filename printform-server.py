@@ -152,7 +152,7 @@ def custom_draw_text(draw, position, text, font, fill=(0, 0, 0), spacing=4, tab_
             x += font.getsize(char)[0]  # Update x position based on character width
 
 def save_to_csv(fieldnames):
-    with open('print_history.csv', mode='a', newline='') as csvfile:
+    with open('print_history.csv', mode='a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         
         if csvfile.tell() == 0:
