@@ -108,8 +108,7 @@ def generate_png(template):
                 font = font_base.replace(".ttf", "i.ttf")
             else:
                 font = font_base
-            print(font)
-
+            
             font = ImageFont.truetype(font, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
             #custom_draw_text(d, (x,y), text, font, fill=(0,0,0))

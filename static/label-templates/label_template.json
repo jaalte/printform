@@ -19,15 +19,15 @@
         },
         {
             "x": 170,
-            "y": 113,
+            "y": 118,
             "name": "midtext",
             "data": {
                 "type": "text",
                 "text": "midtext",
                 "style": {
                     "font-base": "arial.ttf",
-                    "size": 64,
-                    "bold": true,
+                    "size": 56,
+                    "bold": false,
                     "italic": false,
                     "spacing": 1
                 }
