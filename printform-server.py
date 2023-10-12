@@ -1,11 +1,15 @@
 from flask import Flask, render_template, request, send_file, make_response, jsonify,send_from_directory, url_for
-from PIL import Image, ImageDraw, ImageFont
+from PIL import Image, ImageDraw, ImageFont, ImageOps
 import os
 import csv
 import json
 import re
 from datetime import datetime
 import codecs
+import code128
+from pylibdmtx.pylibdmtx import encode
+import qrcode
+
 
 label_base_name = 'static/label-templates/label_base.png'
 label_template_name = 'static/label-templates/label_template.json'
@@ -112,12 +116,36 @@ def generate_png(template):
             font = ImageFont.truetype(font, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
             #custom_draw_text(d, (x,y), text, font, fill=(0,0,0))
-
-    # Apply image offsets
+    
+    # Apply text offsets
     dx, dy = template["offsets"]
     img = offset_image(img,dx,dy)
 
+    # # Generate QR Code with higher error correction
+    # qr = qrcode.QRCode(
+    #     version=1,
+    #     error_correction=qrcode.constants.ERROR_CORRECT_H,
+    #     box_size=20,
+    #     border=4,
+    # )
+    
+    # qr.add_data('tag-TTTTTT-000')
+    # qr.make(fit=True)
+    # qr_img = qr.make_image(fill='black', back_color='white').convert('RGB')
+
+    # # Resize QR code to fit 80% of the main image height
+    # multiplier = 0.8
+    # qr_new_size = int(img.height * multiplier)
+    # qr_img = qr_img.resize((qr_new_size, qr_new_size), Image.NEAREST)
+
+    # # Calculate y-position to center the QR code vertically
+    # y_position = (img.height - qr_new_size) // 2
+
+    # # Paste the QR code into the main image
+    # img.paste(qr_img, (0, y_position))
+
     return img
+
 
 def offset_image(img, dx, dy):
     # Crop the image based on the offsets
