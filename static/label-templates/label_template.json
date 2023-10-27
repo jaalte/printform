@@ -10,16 +10,16 @@
                 "text": "MAIN_TEXT",
                 "style": {
                     "font-base": "arial.ttf",
-                    "size": 64,
-                    "bold": true,
-                    "italic": false,
+                    "size": 72,
+                    "bold": false,
+                    "italic": true,
                     "spacing": 5
                 }
             }
         },
         {
-            "x": 170,
-            "y": 118,
+            "x": 162,
+            "y": 125,
             "name": "midtext",
             "data": {
                 "type": "text",
@@ -35,16 +35,16 @@
         },
         {
             "x": 170,
-            "y": 195,
+            "y": 185,
             "name": "subtext",
             "data": {
                 "type": "text",
                 "text": "SUBTEXT",
                 "style": {
-                    "font-base": "arial.ttf",
+                    "font-base": "comic.ttf",
                     "size": 56,
-                    "bold": false,
-                    "italic": true,
+                    "bold": true,
+                    "italic": false,
                     "spacing": 1
                 }
             }
