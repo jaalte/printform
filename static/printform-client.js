@@ -417,3 +417,21 @@ function checkDeleteButtons() {
     }
 }
 
+document.addEventListener('DOMContentLoaded', () => {
+    // Assuming you have your existing init function or similar setup here
+
+    // Add event listeners to the new buttons
+    document.getElementById('x-offset-up').addEventListener('click', () => {
+        adjustYOffset(7); // Increase Y offset by 7
+    });
+
+    document.getElementById('x-offset-down').addEventListener('click', () => {
+        adjustYOffset(-7); // Decrease Y offset by 7
+    });
+});
+
+function adjustYOffset(amount) {
+    const yOffsetInput = document.getElementById('x-offset');
+    yOffsetInput.value = parseInt(yOffsetInput.value) + amount;
+    document.getElementById('gen-btn').click();
+}
