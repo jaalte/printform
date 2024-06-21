@@ -11,8 +11,8 @@ from pylibdmtx.pylibdmtx import encode
 import qrcode
 
 
-label_base_name = 'static/label-templates/label_base_back_up.png'
-label_template_name = 'static/label-templates/label_template_back_up.json'
+label_base_name = 'static/label-templates/label_base_thin.png'
+label_template_name = 'static/label-templates/label_template_thin.json'
 
 #label_base_name = 'label_base_thin.png'
 #label_template_name = 'label_template_thin.json'
@@ -63,8 +63,8 @@ def generate_label():
     # Rotate the image and save in a new directory
     rotated_img = img.rotate(180)
     os.makedirs('static/generated_labels_rotated', exist_ok=True)
-    rotated_image_path = f'static/generated_labels_rotated/r_{filename}'
-    rotated_img.save(rotated_image_path)
+    #rotated_image_path = f'static/generated_labels_rotated/r_{filename}'
+    #rotated_img.save(rotated_image_path)
 
     # Return the relative path of the image to be used in the browser
     relative_image_path = '/'+image_path
