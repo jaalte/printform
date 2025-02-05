@@ -11,8 +11,8 @@ from pylibdmtx.pylibdmtx import encode
 import qrcode
 
 
-label_base_name = 'static/label-templates/label_base_thin.png'
-label_template_name = 'static/label-templates/label_template_thin.json'
+label_base_name = 'static/label-templates/label_base.png'
+label_template_name = 'static/label-templates/label_template.json'
 
 #label_base_name = 'label_base_thin.png'
 #label_template_name = 'label_template_thin.json'
@@ -119,7 +119,9 @@ def generate_png(template):
             else:
                 font = font_base
             
+            print(font)
             font = ImageFont.truetype(font, font_size)
+            print(font)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
             #custom_draw_text(d, (x,y), text, font, fill=(0,0,0))
     

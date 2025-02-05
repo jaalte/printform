@@ -3,13 +3,13 @@
     "fields": [
         {
             "x": 136,
-            "y": 5,
+            "y": -7,
             "name": "main_text",
             "data": {
                 "type": "text",
                 "text": "MAIN_TEXT",
                 "style": {
-                    "font-base": "arial.ttf",
+                    "font-base": "comic.ttf",
                     "size": 56,
                     "bold": true,
                     "italic": false,
