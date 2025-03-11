@@ -8,7 +8,7 @@ body {
     overflow-y: auto;
 }
 
-.field {
+.TextField {
     display: flex;
     justify-content: space-between;
     align-items: flex-start;
@@ -48,7 +48,10 @@ input[type=number] {
 
 #label-image {
     max-width: 500px;
+    border: 1px solid black;
+    margin-top: 5px;
 }
+
 .container {
     display: flex;
 }

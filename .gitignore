@@ -1,3 +1,5 @@
-static/generated_labels
+static/generated_labels*
+preview_images
 print_history.csv
 print_history.csv
+print-job-log.csv

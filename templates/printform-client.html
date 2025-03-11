@@ -2,98 +2,233 @@
 <html>
 <head>
     <title>Plant Tag Printer</title>
-	<link rel="stylesheet" href="/static/printform-client.css">
-	<script src="/static/printform-client.js"></script>
+    <link rel="stylesheet" href="/static/printform-client.css">
+    <style>
+      /* Form Layout - Aligning text entry and offsets side by side */
+      .form-container {
+        display: flex;
+        align-items: flex-start;
+        gap: 20px; /* Space between text inputs and offsets */
+      }
+
+      /* Styling for the text input section */
+      .data-inputs-container {
+        border: 1px solid #ccc;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 5px;
+      }
+
+      /* Styling for each input row */
+      .input-group {
+        display: flex;
+        align-items: center;
+        margin-bottom: 10px; /* Spacing between input rows */
+      }
+
+      .input-group label {
+        width: 100px; /* Fixed width for label alignment */
+        text-align: right;
+        margin-right: 10px;
+      }
+
+      .input-group input {
+        width: 200px; /* Fixed width for consistency */
+      }
+
+      /* Offsets section placed to the right of text entry */
+      .offset-controls {
+        border: 1px solid #ccc;
+        padding: 10px;
+        background: #f9f9f9;
+        border-radius: 5px;
+        min-width: 180px; /* Ensures it doesn’t shrink */
+      }
+
+      /* Add spacing between preview and form */
+      #label-image {
+        display: none;
+        max-width: 800px;
+        margin-top: 100px; /* Space between dropdown history and preview */
+      }
+
+      /* Print buttons section spacing */
+      #print-controls {
+        margin-top: 20px;
+      }
+
+      /* Toast message area */
+      #toast-message {
+        display: none;
+        position: relative;
+        margin-top: 10px;
+        padding: 10px;
+        border: 1px solid #333;
+        background-color: #eee;
+        color: #000;
+        width: fit-content;
+      }
+    </style>
 </head>
 <body>
     <h1>Plant Tag Printer</h1>
-    <form id="label-form" method="POST">
-		<div class="container">
-			<div class="left">
-				<label for="main_text">Main text:</label>
-				<input type="text" id="main_text" name="main_text" class="input-field"><br><br>
-				<label for="cultivar">Cultivar:</label>
-				<input type="text" id="cultivar" name="cultivar" class="input-field"><br><br>
-				<label for="subtext">Subtext:</label>
-				<input type="text" id="subtext" name="subtext" class="input-field"><br><br>
-				<input type="submit" value="Generate Label" id="gen-btn">
-				<input type="button" value="Save as default" id="save-btn">
-				<br>
-				<div class="scrollable-box">
-					<div id="fields">
-						<!-- The first field is in the HTML and serves as a template -->
-						<div class="field">
-							<div class="main-section">
-								<label>Text Field</label><br>
-								<input class="field-text" type="text" value="Sample Text">
-							</div>
-							
-							<div class="position-section">
-								<label>Position:</label>
-								<label>X: <input type="number" class="x-pos" value="0" step="1" required></label>
-								<label>Y: <input type="number" class="y-pos" value="0" step="1" required></label>
-							</div>
-							
-							<div class="style-section">
-								<label>Style</label>
-								<div>
-									<select class="font-dropdown" style="max-width: 100px">
-										<option value="arial">Arial</option>
-										<option value="verdana">Verdana</option>
-										<option value="times">Times New Roman</option>
-									</select>
-									<input type="number" class="font-size" value="48" step="1" required>
-								</div>
-								<div>
-									<label><input class="bold-toggle" type="checkbox"> B</label>
-									<label><input class="italic-toggle" type="checkbox"> I</label>
-								</div>
-							</div>
-			
-							<div class="control-section">
-								<label><input type="checkbox" class="enable-toggle"> Enabled</label>
-								<button class="delete-btn" disabled>Delete</button>
-							</div>
-						</div>
-					</div>
-					<button id="addField">Add Field</button>
-				</div>
-			</div>
-			<div class="right">
-				<div id="offset-controls-box">
-					<div<span style="text-align: center;">Offsets</span></div>
-					<div>
-						<label for="x-offset">X:</label>
-						<input type="number" id="x-offset" name="x-offset" class="input-field" value="0" step="1" required>
-						<br>
-						<label for="y-offset">Y:</label>
-						<input type="number" id="y-offset" name="y-offset" class="input-field" value="0" step="1" required>
-					</div>
-				</div>
-			</div>
-		</div>
-		<img id="label-image" src="" alt="Generated label" style="display: none;">
-	</form>
+    
+    <form id="label-form">
+        <div class="form-container">
+            <!-- Text Entry Section -->
+            <div class="data-inputs-container">
+                <strong>Text Entry</strong>
+                <div class="input-group">
+                    <label for="main_text">Main Text:</label>
+                    <input type="text" id="main_text" name="main_text" class="debounced-field">
+                </div>
+                <div class="input-group">
+                    <label for="midtext">Cultivar:</label>
+                    <input type="text" id="midtext" name="midtext" class="debounced-field">
+                </div>
+                <div class="input-group">
+                    <label for="subtext">Subtext:</label>
+                    <input type="text" id="subtext" name="subtext" class="debounced-field">
+                </div>
+            </div>
 
-	<script>
-	  document.getElementById('label-form').addEventListener('submit', function (event) {
-		event.preventDefault();
+            <!-- Offsets Section (Positioned to the right of inputs) -->
+            <div class="offset-controls">
+                <strong>Offsets</strong>
+                <div class="input-group">
+                    <label for="x-offset">X:</label>
+                    <input type="number" id="x-offset" name="x-offset" class="debounced-field" value="0" step="1">
+                    <button type="button" id="x-offset-down" class="offset-btn">←</button>
+                    <button type="button" id="x-offset-up" class="offset-btn">→</button>
+                </div>
+                <div class="input-group">
+                    <label for="y-offset">Y:</label>
+                    <input type="number" id="y-offset" name="y-offset" class="debounced-field" value="0" step="1">
+                </div>
+            </div>
+        </div>
 
-		const formData = new FormData(event.target);
+        <!-- Label Preview Image -->
+        <img id="label-image" src="" alt="Label Preview">
 
-		fetch('/generate_label', {
-		  method: 'POST',
-		  body: formData,
-		})
-		  .then((response) => response.json())
-		  .then((data) => {
-			const labelImage = document.getElementById('label-image');
-			labelImage.src = data.image_path;
-			labelImage.style.display = 'block';
+        <!-- Print & Save Controls -->
+        <div id="print-controls">
+            <label for="print-count">Print Count:</label>
+            <input type="number" id="print-count" name="print-count" value="1" min="0" step="1">
 
-		  });
-	  });
-	</script>
+            <button type="button" id="print-one-btn">Print One</button>
+            <button type="button" id="print-batch-btn">Print Batch</button>
+            <button type="button" id="save-label-btn">Save Label</button>
+        </div>
+    </form>
+
+    <!-- Toast Message -->
+    <div id="toast-message"></div>
+
+    <script>
+    // Generate a random session ID on page load
+    const sessionId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
+      .map(b => b.toString(16).padStart(2, '0')).join('');
+
+    const labelForm = document.getElementById('label-form');
+    const labelImage = document.getElementById('label-image');
+    const printControls = document.getElementById('print-controls');
+    const printCountInput = document.getElementById('print-count');
+    const toastMessage = document.getElementById('toast-message');
+
+    // Debounce logic
+    let debounceTimer = null;
+    const DEBOUNCE_DELAY = 200; // ms
+
+    function showToast(msg) {
+      toastMessage.textContent = msg;
+      toastMessage.style.display = 'block';
+      setTimeout(() => {
+        toastMessage.style.display = 'none';
+      }, 3000);
+    }
+
+    function updatePreview() {
+      const formData = new FormData(labelForm);
+      formData.append('session_id', sessionId);
+
+      fetch('/preview_label', {
+        method: 'POST',
+        body: formData
+      })
+      .then(r => r.json())
+      .then(data => {
+        console.log('Preview response:', data);
+        if (data.image_path) {
+          // Force refresh by adding cache-busting timestamp
+          const cacheBuster = new Date().getTime();
+          labelImage.src = `${data.image_path}?v=${cacheBuster}`;
+          labelImage.style.display = 'block';
+          printControls.style.display = 'block';
+        }
+      })
+      .catch(err => console.error('Preview error:', err));
+    }
+
+    function debouncedPreview() {
+      if (debounceTimer) {
+        clearTimeout(debounceTimer);
+      }
+      debounceTimer = setTimeout(updatePreview, DEBOUNCE_DELAY);
+    }
+
+    document.querySelectorAll('.debounced-field').forEach(field => {
+      field.addEventListener('input', debouncedPreview);
+    });
+
+    document.getElementById('print-one-btn').addEventListener('click', () => {
+      const countVal = parseInt(printCountInput.value) || 1;
+      fetch('/print_label', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session_id: sessionId, count: 1 })
+      })
+      .then(r => r.json())
+      .then(data => {
+        console.log(data);
+        if (countVal > 0) printCountInput.value = countVal - 1;
+        showToast('Printed one label.');
+      });
+    });
+
+    document.getElementById('print-batch-btn').addEventListener('click', () => {
+      const countVal = parseInt(printCountInput.value) || 0;
+      if (countVal <= 0) {
+        showToast("Can't print batch, no labels queued.");
+        return;
+      }
+      fetch('/print_label', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session_id: sessionId, count: countVal })
+      })
+      .then(r => r.json())
+      .then(data => {
+        console.log(data);
+        printCountInput.value = 0;
+        showToast(`Printed batch of ${countVal}.`);
+      });
+    });
+
+    document.getElementById('save-label-btn').addEventListener('click', () => {
+      fetch('/save_label', {
+        method: 'POST',
+        headers: {'Content-Type': 'application/json'},
+        body: JSON.stringify({ session_id: sessionId })
+      })
+      .then(r => r.json())
+      .then(data => {
+        console.log(data);
+        showToast(data.error ? `Error: ${data.error}` : `Saved to: ${data.saved_path}`);
+      });
+    });
+
+    updatePreview();
+    </script>
 </body>
 </html>
-

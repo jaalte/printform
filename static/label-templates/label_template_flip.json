@@ -1,0 +1,53 @@
+{
+    "offsets": [50,-20],
+    "fields": [
+        {
+            "x": 170,
+            "y": 25,
+            "name": "main_text",
+            "data": {
+                "type": "text",
+                "text": "MAIN_TEXT",
+                "style": {
+                    "font-base": "comic.ttf",
+                    "size": 72,
+                    "bold": true,
+                    "italic": false,
+                    "spacing": 5
+                }
+            }
+        },
+        {
+            "x": 170,
+            "y": 125,
+            "name": "midtext",
+            "data": {
+                "type": "text",
+                "text": "midtext",
+                "style": {
+                    "font-base": "arial.ttf",
+                    "size": 56,
+                    "bold": false,
+                    "italic": false,
+                    "spacing": 1
+                }
+            }
+        },
+        {
+            "x": 167,
+            "y": 200,
+            "name": "subtext",
+            "data": {
+                "type": "text",
+                "text": "SUBTEXT",
+                "style": {
+                    "font-base": "arial.ttf",
+                    "size": 56,
+                    "bold": false,
+                    "italic": true,
+                    "spacing": 1
+                }
+            }
+        }
+    ]
+}
