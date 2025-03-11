@@ -2,14 +2,16 @@
 import os
 import numpy as np
 from PIL import Image
+from tqdm import tqdm
 
 # Adjust this ratio as needed:
-target_midpoint_ratio = 0.6
+target_midpoint_ratio = 0.5
 
 # Define your source and destination directories here:
 src_dir = "./generated_labels"
 dst_dir = "./generated_labels_balanced"
 
+# Ensure the destination directory exists
 os.makedirs(dst_dir, exist_ok=True)
 
 def find_top_whitespace(arr_gray):
@@ -118,14 +120,29 @@ def process_image(src_path, dst_path):
     new_img.save(dst_path)
 
 def main():
-    # Process each PNG in the source directory
-    for filename in os.listdir(src_dir):
-        if not filename.lower().endswith(".png"):
-            continue
+    # Gather all PNG files from the source directory, sorted by oldest to newest modified date
+    all_files = sorted(
+        [f for f in os.listdir(src_dir) if f.lower().endswith(".png")],
+        key=lambda x: os.path.getmtime(os.path.join(src_dir, x))
+    )
+    total_files = len(all_files)
 
-        src_path = os.path.join(src_dir, filename)
-        dst_path = os.path.join(dst_dir, filename)
-        process_image(src_path, dst_path)
+    # If no images are found, notify and exit
+    if total_files == 0:
+        print("No PNG files found in the source directory.")
+        return
+
+    print(f"Processing {total_files} images...")
+
+    # Use tqdm for progress tracking
+    with tqdm(total=total_files, desc="Processing Images", unit="image") as pbar:
+        for filename in all_files:
+            src_path = os.path.join(src_dir, filename)
+            dst_path = os.path.join(dst_dir, filename)
+            process_image(src_path, dst_path)
+            pbar.update(1)
+
+    print("Processing complete.")
 
 if __name__ == "__main__":
     main()
