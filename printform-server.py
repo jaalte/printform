@@ -9,8 +9,6 @@ import codecs
 import win32print
 import win32ui
 from datetime import datetime
-import random
-import string
 
 ###############################################################################
 # CONFIG / PATHS
@@ -31,6 +29,9 @@ os.makedirs(FINAL_LABELS_DIR, exist_ok=True)
 # Index file that tracks all saved labels
 SAVED_INDEX_FILE = 'saved-label-index.json'
 
+# Print log file that will track print jobs
+PRINT_LOG_FILE = 'print-log.json'
+
 # Paths for your base image + label JSON
 label_base_name = 'static/label-templates/label_base.png'
 label_template_name = 'static/label-templates/label_template.json'
@@ -39,12 +40,10 @@ label_template_name = 'static/label-templates/label_template.json'
 # A dictionary to remember each user's session data:
 #   key = session_id
 #   val = {
-#       "formdata": { ...latest fields... },
+#       "used_formdata": { ...fields used to generate label... },
 #       "label_template": { ... },
 #       "date_created": "YYYY-MM-DDTHH:MM:SS",
-#       "preview_filename": "preview_<session_id>.png",
-#       "printer_dpi": 305,  # if needed
-#       "recommended_name": "whatever_filename_you_want.png"
+#       "preview_filename": "preview_<session_id>.png"
 #   }
 ###############################################################################
 temp_label_store = {}
@@ -76,12 +75,11 @@ def offset_image(img, dx, dy):
     return offset_img
 
 def save_to_csv(fieldnames):
-    """Adds the form values to print_history.csv."""
+    """Adds the form values to print_history.csv, if desired."""
     with open('print_history.csv', mode='a', newline='', encoding='utf-8') as csvfile:
         writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
         if csvfile.tell() == 0:
             writer.writeheader()
-
         values = [request.form.get(name, '') for name in fieldnames]
         values_dict = dict(zip(fieldnames, values))
         writer.writerow(values_dict)
@@ -89,7 +87,7 @@ def save_to_csv(fieldnames):
 def generate_png(template):
     """
     Generates the label image in memory according to
-    the template and request form data.
+    the template and request.form data.
     """
     img = Image.open(label_base_name)
     d = ImageDraw.Draw(img)
@@ -107,7 +105,7 @@ def generate_png(template):
             italic = data['style'].get('italic', False)
             spacing = data['style'].get('spacing', 1)
 
-            # Build the actual font path from font_base
+            # Build the actual font path
             if bold and italic:
                 font_path = font_base.replace(".ttf", "bi.ttf")
             elif bold:
@@ -122,17 +120,65 @@ def generate_png(template):
 
     # Apply offsets
     dx, dy = template["offsets"]
-    img = offset_image(img, dx, dy)
-    return img
+    return offset_image(img, dx, dy)
 
-def print_label_file(image_path, copies):
-    """Prints the given image `copies` times on Windows using win32print."""
+def append_to_saved_index(entry):
+    """
+    Appends a record to saved-label-index.json, creating if needed.
+    Only called when /save_label is used.
+    """
+    index_path = os.path.join(app.root_path, SAVED_INDEX_FILE)
+    if os.path.exists(index_path):
+        with open(index_path, 'r', encoding='utf-8') as f:
+            records = json.load(f)
+    else:
+        records = []
+
+    records.append(entry)
+
+    with open(index_path, 'w', encoding='utf-8') as f:
+        json.dump(records, f, indent=2)
+
+def append_to_print_log(session_id, copies):
+    """
+    Appends a record to print-log.json containing the form data and template
+    used to generate the label. These are loaded from temp_label_store.
+    """
+    log_path = os.path.join(app.root_path, PRINT_LOG_FILE)
+
+    if os.path.exists(log_path):
+        with open(log_path, 'r', encoding='utf-8') as f:
+            logs = json.load(f)
+    else:
+        logs = []
+
+    entry_data = temp_label_store.get(session_id, {})
+    used_formdata = entry_data.get('used_formdata', {})
+    label_template = entry_data.get('label_template', {})
+
+    log_entry = {
+        "session_id": session_id,
+        "count": copies,
+        "formdata": used_formdata,        # the data used in generate_png
+        "label_template": label_template,      # the template used
+        "unix_time": int(datetime.now().timestamp()),
+        "time": datetime.now().isoformat()
+    }
+    logs.append(log_entry)
+
+    with open(log_path, 'w', encoding='utf-8') as f:
+        json.dump(logs, f, indent=2)
+
+def print_label_file(image_path, copies, session_id=None):
+    """
+    Prints the given image `copies` times on Windows using win32print,
+    then logs the form/template data to print-log.json.
+    """
     if copies <= 0:
-        return  # ignore zero or negative
+        return
 
     abs_path = os.path.join(app.root_path, image_path.lstrip('/'))
     if not os.path.exists(abs_path):
-        # If file doesn't exist, just return
         return
 
     hprinter = win32print.OpenPrinter(PRINTER_NAME)
@@ -143,11 +189,9 @@ def print_label_file(image_path, copies):
     dpi_y = printer_dc.GetDeviceCaps(90)  # VERTRES
 
     image = Image.open(abs_path)
-
-    # Example dimension: 5" x 1"
+    # Example dimension: 5" x 1" label
     target_width = int(5 * dpi_x)
     target_height = int(1 * dpi_y)
-
     image = image.resize((target_width, target_height))
 
     printer_dc.StartDoc(os.path.basename(abs_path))
@@ -161,21 +205,8 @@ def print_label_file(image_path, copies):
     printer_dc.DeleteDC()
     win32print.ClosePrinter(hprinter)
 
-def append_to_saved_index(entry):
-    """
-    Appends a record to saved-label-index.json, creating if needed.
-    """
-    index_path = os.path.join(app.root_path, SAVED_INDEX_FILE)
-    if os.path.exists(index_path):
-        with open(index_path, 'r', encoding='utf-8') as f:
-            records = json.load(f)
-    else:
-        records = []
-
-    records.append(entry)
-
-    with open(index_path, 'w', encoding='utf-8') as f:
-        json.dump(records, f, indent=2)
+    # Log the form data & template
+    append_to_print_log(session_id if session_id else "unknown", copies)
 
 ###############################################################################
 # ROUTES
@@ -191,6 +222,7 @@ def preview_label():
     """
     Generate/update a single "preview" image in `static/preview_images/`
     for the given session_id. Overwrites the same file each time.
+    Also saves 'used_formdata' and 'label_template' in temp_label_store.
     """
     session_id = request.form.get('session_id', '')
     if not session_id:
@@ -199,40 +231,37 @@ def preview_label():
     # Load label template
     with open(label_template_name, 'r') as f:
         base_template = json.load(f)
-    # Put 'name' first
+
     template = {
         "name": os.path.basename(label_template_name),
         **base_template
     }
 
-    # Offsets
+    # Incorporate offset adjustments
     template['offsets'][0] += int(request.form.get('x-offset', 0))
     template['offsets'][1] += int(request.form.get('y-offset', 0))
 
-    # Identify field names
+    # Identify relevant field names
     fieldnames = [field["name"] for field in template['fields']]
-    formdata = {name: request.form.get(name, '') for name in fieldnames}
+    used_formdata = {name: request.form.get(name, '') for name in fieldnames}
 
-    # Save to CSV if desired
+    # Optionally log to CSV
     save_to_csv(fieldnames)
 
-    # Generate the label in memory
+    # Generate the in-memory label
     img = generate_png(template)
 
-    # Single preview file path
+    # Construct the preview file path
     preview_filename = f"preview_{session_id}.png"
     abs_preview_path = os.path.join(app.root_path, PREVIEW_FOLDER, preview_filename)
-
-    # Save/overwrite
     img.save(abs_preview_path)
 
-    # Build a server-relative path with forward slashes
     server_relative_path = '/' + os.path.relpath(abs_preview_path, app.root_path)
     server_relative_path = server_relative_path.replace('\\', '/')
 
-    # Store all data in temp_label_store for this session
+    # Store data for later retrieval by /print_label
     temp_label_store[session_id] = {
-        "formdata": formdata,
+        "used_formdata": used_formdata,       # the data we used to generate the label
         "label_template": template,
         "date_created": datetime.now().isoformat(),
         "preview_filename": preview_filename,
@@ -247,9 +276,7 @@ def preview_label():
 def print_label():
     """
     Prints the single preview image for a session, repeated 'count' times.
-    Expects:
-      session_id,
-      count
+    Uses the form data & template from temp_label_store[session_id].
     """
     data = request.get_json() or request.form
     session_id = data.get('session_id', '')
@@ -258,10 +285,9 @@ def print_label():
     if not session_id or count <= 0:
         return jsonify({"message": "Nothing to print."}), 200
 
-    # Construct the path: /static/preview_images/preview_<session_id>.png
     preview_filename = f"preview_{session_id}.png"
     server_relative_path = f"/{PREVIEW_FOLDER}/{preview_filename}"
-    print_label_file(server_relative_path, count)
+    print_label_file(server_relative_path, count, session_id=session_id)
 
     return jsonify({
         "message": f"Printed {count} copies of preview image for session {session_id}."
@@ -270,8 +296,9 @@ def print_label():
 @app.route('/save_label', methods=['POST'])
 def save_label():
     """
-    Moves the single preview file for this session from `preview_images` to
-    `static/generated_labels/` and appends an entry to saved-label-index.json.
+    Moves the single preview file for this session from preview_images to
+    static/generated_labels, then appends an entry to saved-label-index.json.
+    This is the only place that updates/creates saved-label-index.json.
     """
     data = request.get_json() or request.form
     session_id = data.get('session_id', '')
@@ -281,23 +308,18 @@ def save_label():
 
     preview_filename = f"preview_{session_id}.png"
     abs_preview_path = os.path.join(app.root_path, PREVIEW_FOLDER, preview_filename)
-
     if not os.path.exists(abs_preview_path):
         return jsonify({"error": "Preview file not found."}), 404
 
-    # Build final name. If you want something dynamic from formdata, do it here.
-    # For example, use the main_text if available:
-    entry_data = temp_label_store.get(session_id, None)
-    if not entry_data:
-        # If lost, fallback
-        entry_data = {
-            "formdata": {},
-            "label_template": {},
-            "date_created": datetime.now().isoformat()
-        }
+    # Retrieve stored data (form/template)
+    entry_data = temp_label_store.get(session_id, {
+        "used_formdata": {},
+        "label_template": {},
+        "date_created": datetime.now().isoformat()
+    })
 
-    # Example: build a name from the formdata
-    main_text = entry_data["formdata"].get("main_text", "label")
+    # Example dynamic filename based on a form field
+    main_text = entry_data["used_formdata"].get("main_text", "label")
     sanitized_main_text = sanitize_string(main_text).lower()
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     final_filename = f"label_{sanitized_main_text}_{timestamp}.png"
@@ -308,11 +330,11 @@ def save_label():
     new_rel_path = '/' + os.path.relpath(abs_final_path, app.root_path)
     new_rel_path = new_rel_path.replace('\\', '/')
 
-    # Build a record for saved-label-index
+    # Build a record for saved-label-index.json
     record = {
         "filepath": new_rel_path,
         "date_created": entry_data["date_created"],
-        "formdata": entry_data["formdata"],
+        "formdata": entry_data["used_formdata"],
         "label_template": entry_data["label_template"]
     }
     append_to_saved_index(record)
@@ -322,7 +344,7 @@ def save_label():
         "saved_path": new_rel_path
     })
 
-# Optional route if you want to let users manually download
+# Optional route to manually download saved images
 @app.route('/download_image/<path:filename>')
 def download_image(filename):
     return send_from_directory(FINAL_LABELS_DIR, filename, as_attachment=True)
