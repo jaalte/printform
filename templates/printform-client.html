@@ -55,6 +55,7 @@
       /* Print buttons section spacing */
       #print-controls {
         margin-top: 20px;
+        display: none; /* Hide until preview loads */
       }
 
       /* Toast message area */
@@ -73,7 +74,16 @@
 <body>
     <h1>Plant Tag Printer</h1>
     
+    <!-- We put the template dropdown INSIDE the form so it's included in FormData() -->
     <form id="label-form">
+        <!-- ### ADDED: Template selector at the top, so it’s included in the same form. -->
+        <div class="input-group">
+            <label for="template-select">Template:</label>
+            <select id="template-select" name="template_name">
+                <!-- Options get populated by JS -->
+            </select>
+        </div>
+
         <div class="form-container">
             <!-- Text Entry Section -->
             <div class="data-inputs-container">
@@ -112,7 +122,7 @@
         <img id="label-image" src="" alt="Label Preview">
 
         <!-- Print & Save Controls -->
-        <div id="print-controls" style="display:none;">
+        <div id="print-controls">
             <label for="print-count">Print Count:</label>
             <input type="number" id="print-count" name="print-count" value="1" min="0" step="1">
 
@@ -130,17 +140,12 @@
     const sessionId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
       .map(b => b.toString(16).padStart(2, '0')).join('');
 
-    const labelForm = document.getElementById('label-form');
-    const labelImage = document.getElementById('label-image');
-    const printControls = document.getElementById('print-controls');
-    const printCountInput = document.getElementById('print-count');
-    const toastMessage = document.getElementById('toast-message');
-
     // Debounce logic
     let debounceTimer = null;
-    const DEBOUNCE_DELAY = 200; // ms
+    const DEBOUNCE_DELAY = 200;
 
     function showToast(msg) {
+      const toastMessage = document.getElementById('toast-message');
       toastMessage.textContent = msg;
       toastMessage.style.display = 'block';
       setTimeout(() => {
@@ -149,7 +154,12 @@
     }
 
     function updatePreview() {
+      const labelForm = document.getElementById('label-form');
+      const labelImage = document.getElementById('label-image');
+      const printControls = document.getElementById('print-controls');
+
       const formData = new FormData(labelForm);
+      // Add session_id to the request
       formData.append('session_id', sessionId);
 
       fetch('/preview_label', {
@@ -160,11 +170,13 @@
       .then(data => {
         console.log('Preview response:', data);
         if (data.image_path) {
-          // Force refresh by adding cache-buster
+          // Show the preview & print controls
           const cacheBuster = new Date().getTime();
           labelImage.src = `${data.image_path}?v=${cacheBuster}`;
           labelImage.style.display = 'block';
           printControls.style.display = 'block';
+        } else if (data.error) {
+          console.error('Preview error:', data.error);
         }
       })
       .catch(err => console.error('Preview error:', err));
@@ -177,29 +189,59 @@
       debounceTimer = setTimeout(updatePreview, DEBOUNCE_DELAY);
     }
 
-    // Attach input handlers for all fields that should trigger a preview refresh
+    // On page load, populate the template dropdown
+    const templateSelect = document.getElementById('template-select');
+    fetch('/get_templates')
+      .then(resp => resp.json())
+      .then(templateKeys => {
+        // Clear anything existing
+        templateSelect.innerHTML = '';
+        // If you want a placeholder, you could do:
+        // const placeholder = document.createElement('option');
+        // placeholder.value = '';
+        // placeholder.textContent = 'Select template...';
+        // templateSelect.appendChild(placeholder);
+
+        // Add each template as an <option>
+        for (const tk of templateKeys) {
+          const opt = document.createElement('option');
+          opt.value = tk;
+          opt.textContent = tk;
+          templateSelect.appendChild(opt);
+        }
+
+        // Immediately select the first option (if any) to avoid empty value
+        if (templateKeys.length > 0) {
+          templateSelect.value = templateKeys[0];
+        }
+
+        // Trigger initial preview
+        updatePreview();
+      })
+      .catch(err => console.error('Error loading templates:', err));
+
+    // Re-generate preview when the user changes the template
+    templateSelect.addEventListener('change', updatePreview);
+
+    // Attach input handlers for fields that need a preview update
     document.querySelectorAll('.debounced-field').forEach(field => {
       field.addEventListener('input', debouncedPreview);
     });
 
-    // === Offset Button Listeners ===
-    // Decrement X offset by 7
+    // Offset button listeners
     document.getElementById('x-offset-down').addEventListener('click', () => {
       const xOffsetInput = document.getElementById('x-offset');
-      const currentVal = parseInt(xOffsetInput.value) || 0;
-      xOffsetInput.value = currentVal - 7;
+      xOffsetInput.value = (parseInt(xOffsetInput.value) || 0) - 7;
       debouncedPreview();
     });
-
-    // Increment X offset by 7
     document.getElementById('x-offset-up').addEventListener('click', () => {
       const xOffsetInput = document.getElementById('x-offset');
-      const currentVal = parseInt(xOffsetInput.value) || 0;
-      xOffsetInput.value = currentVal + 7;
+      xOffsetInput.value = (parseInt(xOffsetInput.value) || 0) + 7;
       debouncedPreview();
     });
 
     // Print one label
+    const printCountInput = document.getElementById('print-count');
     document.getElementById('print-one-btn').addEventListener('click', () => {
       const countVal = parseInt(printCountInput.value) || 1;
       fetch('/print_label', {
@@ -209,10 +251,13 @@
       })
       .then(r => r.json())
       .then(data => {
-        console.log(data);
-        if (countVal > 0) printCountInput.value = countVal - 1;
+        console.log('Print one:', data);
+        if (countVal > 0) {
+          printCountInput.value = countVal - 1;
+        }
         showToast('Printed one label.');
-      });
+      })
+      .catch(err => console.error(err));
     });
 
     // Print a batch
@@ -229,13 +274,14 @@
       })
       .then(r => r.json())
       .then(data => {
-        console.log(data);
+        console.log('Print batch:', data);
         printCountInput.value = 0;
         showToast(`Printed batch of ${countVal}.`);
-      });
+      })
+      .catch(err => console.error(err));
     });
 
-    // Save the label (moves preview file to static/generated_labels)
+    // Save the label
     document.getElementById('save-label-btn').addEventListener('click', () => {
       fetch('/save_label', {
         method: 'POST',
@@ -244,13 +290,18 @@
       })
       .then(r => r.json())
       .then(data => {
-        console.log(data);
-        showToast(data.error ? `Error: ${data.error}` : `Saved to: ${data.saved_path}`);
-      });
+        console.log('Save label:', data);
+        if (data.error) {
+          showToast(`Error: ${data.error}`);
+        } else {
+          showToast(`Saved to: ${data.saved_path}`);
+        }
+      })
+      .catch(err => console.error(err));
     });
 
-    // Initial preview on load
-    updatePreview();
+    // Optional: You could call updatePreview() again here if you want a second attempt
+    // once everything is fully loaded, but it's typically not needed.
     </script>
 </body>
 </html>

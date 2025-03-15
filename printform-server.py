@@ -34,7 +34,8 @@ SAVED_INDEX_FILE = 'saved-label-index.json'
 PRINT_LOG_FILE = 'print-log.json'
 
 # Paths for label template JSON
-label_template_path = 'static/label-templates/label_template.json'
+#  (We still keep this as a default, in case user doesn't pick any template_name)
+label_template_path = 'static/label-templates/label_template_default.json'
 
 ###############################################################################
 # A dictionary to remember each user's session data:
@@ -47,6 +48,49 @@ label_template_path = 'static/label-templates/label_template.json'
 #   }
 ###############################################################################
 temp_label_store = {}
+
+
+###############################################################################
+# INITIALIZATION
+###############################################################################
+
+def main():
+    pass
+
+def load_templates():
+    """
+    ### ADDED ###
+    Loads all template files in static/label-templates that match label_template*.json,
+    returning a dict keyed by each file's 'label' property. That 'label' is
+    the human-readable name that goes in the dropdown.
+    """
+    templates = {}
+
+    # Locate all template files in this directory
+    # Template files match format label_template*.json
+    template_folder_path = "static/label-templates"
+    template_file_paths = [
+        os.path.join(template_folder_path, f)
+        for f in os.listdir(template_folder_path)
+        if f.startswith("label_template") and f.endswith(".json")
+    ]
+
+    for template_path in template_file_paths:
+        # Load label template
+        with open(template_path, 'r', encoding='utf-8') as f:
+            base_template = json.load(f)
+
+        # Add the filename and location to improve logging
+        template = {
+            **base_template,
+            "filename": os.path.basename(template_path),
+            "template_path": template_path,
+        }
+
+        # "label" is a field in each JSON that identifies this template
+        templates[template['label']] = template
+
+    return templates
 
 ###############################################################################
 # UTILITY FUNCTIONS
@@ -108,6 +152,7 @@ def generate_png(template):
             spacing = data['style'].get('spacing', 1)
 
             # Build the actual font path
+            # (retain the user's original comment)
             if bold and italic:
                 font_path = font_base.replace(".ttf", "bi.ttf")
             elif bold:
@@ -218,6 +263,18 @@ def index():
     """Serve the main HTML interface."""
     return render_template('printform-client.html')
 
+
+### ADDED: Return available template names
+@app.route('/get_templates', methods=['GET'])
+def get_templates():
+    """
+    Returns the list of available label templates (the 'label' field from each file).
+    """
+    templates = load_templates()
+    # Return just the keys (the template['label'] string)
+    return jsonify(list(templates.keys()))
+
+
 @app.route('/preview_label', methods=['POST'])
 def preview_label():
     """
@@ -229,14 +286,23 @@ def preview_label():
     if not session_id:
         return jsonify({"error": "No session_id provided"}), 400
 
-    # Load label template
-    with open(label_template_path, 'r') as f:
-        base_template = json.load(f)
+    # ### ADDED ### - Check if user provided a template_name
+    chosen_template_name = request.form.get('template_name', '')
 
-    template = {
-        "name": os.path.basename(label_template_path),
-        **base_template
-    }
+    if chosen_template_name:
+        # If user selected a template from the dropdown
+        all_templates = load_templates()
+        if chosen_template_name not in all_templates:
+            return jsonify({"error": f"Unknown template_name: {chosen_template_name}"}), 400
+        template = all_templates[chosen_template_name]
+    else:
+        # fallback to your default file if none provided
+        with open(label_template_path, 'r', encoding='utf-8') as f:
+            base_template = json.load(f)
+        template = {
+            "name": os.path.basename(label_template_path),
+            **base_template
+        }
 
     # Incorporate offset adjustments
     template['offsets'][0] += int(request.form.get('x-offset', 0))
@@ -329,8 +395,7 @@ def save_label():
     sanitized_mid  = sanitize_string(mid_text).lower()
     sanitized_sub  = sanitize_string(sub_text).lower()
 
-    # Combine them with underscores (skip fields if you prefer)
-    # Here, we include them all in order:
+    # Combine them with underscores
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
     final_filename = f"label_{sanitized_main}_{sanitized_mid}_{sanitized_sub}_{timestamp}.png"
 
@@ -367,4 +432,5 @@ def serve_preview_images(filename):
     return send_from_directory(PREVIEW_FOLDER, filename)
 
 if __name__ == '__main__':
+    main()
     app.run(debug=True)
