@@ -1,11 +1,10 @@
 {
-    "label": "Default Label Template",
+    "label": "Edible Plant Label Template",
     "base_image": "static/label-templates/label_base.png",
-    "description": "General-purpose, focusing on the scientific name",
     "offsets": [50,-20],
     "fields": [
         {
-            "label": "Scientific Name",
+            "label": "Common Name",
             "x": 170,
             "y": 40,
             "name": "main_text",
@@ -15,16 +14,16 @@
                 "style": {
                     "font-base": "arial.ttf",
                     "size": 72,
-                    "bold": false,
-                    "italic": true,
+                    "bold": true,
+                    "italic": false,
                     "spacing": 5
                 }
             }
         },
         {
-            "label": "Cultivar",
-            "x": 162,
-            "y": 125,
+            "label": "Cultivar, type, etc",
+            "x": 170,
+            "y": 128,
             "name": "midtext",
             "data": {
                 "type": "text",
@@ -33,23 +32,23 @@
                     "font-base": "arial.ttf",
                     "size": 56,
                     "bold": false,
-                    "italic": false,
+                    "italic": true,
                     "spacing": 1
                 }
             }
         },
         {
-            "label": "Common Name",
+            "label": "Description",
             "x": 170,
-            "y": 185,
+            "y": 200,
             "name": "subtext",
             "data": {
                 "type": "text",
                 "text": "SUBTEXT",
                 "style": {
-                    "font-base": "comic.ttf",
+                    "font-base": "arial.ttf",
                     "size": 56,
-                    "bold": true,
+                    "bold": false,
                     "italic": false,
                     "spacing": 1
                 }

@@ -6,6 +6,7 @@ import csv
 import json
 import re
 import codecs
+import shutil
 import win32print
 import win32ui
 from datetime import datetime
@@ -32,9 +33,8 @@ SAVED_INDEX_FILE = 'saved-label-index.json'
 # Print log file that will track print jobs
 PRINT_LOG_FILE = 'print-log.json'
 
-# Paths for your base image + label JSON
-label_base_name = 'static/label-templates/label_base.png'
-label_template_name = 'static/label-templates/label_template.json'
+# Paths for label template JSON
+label_template_path = 'static/label-templates/label_template.json'
 
 ###############################################################################
 # A dictionary to remember each user's session data:
@@ -89,7 +89,9 @@ def generate_png(template):
     Generates the label image in memory according to
     the template and request.form data.
     """
-    img = Image.open(label_base_name)
+    label_base_path = template['base_image'] or "static/label-templates/label_base.png"
+    
+    img = Image.open(label_base_path)
     d = ImageDraw.Draw(img)
 
     for field in template['fields']:
@@ -145,7 +147,6 @@ def append_to_print_log(session_id, copies):
     used to generate the label. These are loaded from temp_label_store.
     """
     log_path = os.path.join(app.root_path, PRINT_LOG_FILE)
-
     if os.path.exists(log_path):
         with open(log_path, 'r', encoding='utf-8') as f:
             logs = json.load(f)
@@ -160,7 +161,7 @@ def append_to_print_log(session_id, copies):
         "session_id": session_id,
         "count": copies,
         "formdata": used_formdata,        # the data used in generate_png
-        "label_template": label_template,      # the template used
+        "label_template": label_template, # the template used
         "unix_time": int(datetime.now().timestamp()),
         "time": datetime.now().isoformat()
     }
@@ -229,11 +230,11 @@ def preview_label():
         return jsonify({"error": "No session_id provided"}), 400
 
     # Load label template
-    with open(label_template_name, 'r') as f:
+    with open(label_template_path, 'r') as f:
         base_template = json.load(f)
 
     template = {
-        "name": os.path.basename(label_template_name),
+        "name": os.path.basename(label_template_path),
         **base_template
     }
 
@@ -261,7 +262,7 @@ def preview_label():
 
     # Store data for later retrieval by /print_label
     temp_label_store[session_id] = {
-        "used_formdata": used_formdata,       # the data we used to generate the label
+        "used_formdata": used_formdata,       # data used to generate the label
         "label_template": template,
         "date_created": datetime.now().isoformat(),
         "preview_filename": preview_filename,
@@ -296,9 +297,9 @@ def print_label():
 @app.route('/save_label', methods=['POST'])
 def save_label():
     """
-    Moves the single preview file for this session from preview_images to
+    Copies the single preview file for this session from preview_images to
     static/generated_labels, then appends an entry to saved-label-index.json.
-    This is the only place that updates/creates saved-label-index.json.
+    Now includes main_text, midtext, and subtext in the filename.
     """
     data = request.get_json() or request.form
     session_id = data.get('session_id', '')
@@ -318,14 +319,25 @@ def save_label():
         "date_created": datetime.now().isoformat()
     })
 
-    # Example dynamic filename based on a form field
-    main_text = entry_data["used_formdata"].get("main_text", "label")
-    sanitized_main_text = sanitize_string(main_text).lower()
+    # -- Build the dynamic filename from multiple fields --
+    main_text  = entry_data["used_formdata"].get("main_text", "label")
+    mid_text   = entry_data["used_formdata"].get("midtext", "")
+    sub_text   = entry_data["used_formdata"].get("subtext", "")
+
+    # Sanitize each field before combining
+    sanitized_main = sanitize_string(main_text).lower()
+    sanitized_mid  = sanitize_string(mid_text).lower()
+    sanitized_sub  = sanitize_string(sub_text).lower()
+
+    # Combine them with underscores (skip fields if you prefer)
+    # Here, we include them all in order:
     timestamp = datetime.now().strftime("%Y%m%d-%H%M%S")
-    final_filename = f"label_{sanitized_main_text}_{timestamp}.png"
+    final_filename = f"label_{sanitized_main}_{sanitized_mid}_{sanitized_sub}_{timestamp}.png"
 
     abs_final_path = os.path.join(app.root_path, FINAL_LABELS_DIR, final_filename)
-    os.rename(abs_preview_path, abs_final_path)
+
+    # Copy instead of moving so we can still print the preview afterward
+    shutil.copyfile(abs_preview_path, abs_final_path)
 
     new_rel_path = '/' + os.path.relpath(abs_final_path, app.root_path)
     new_rel_path = new_rel_path.replace('\\', '/')
