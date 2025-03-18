@@ -264,15 +264,14 @@ def index():
     return render_template('printform-client.html')
 
 
-### ADDED: Return available template names
 @app.route('/get_templates', methods=['GET'])
 def get_templates():
     """
-    Returns the list of available label templates (the 'label' field from each file).
+    Returns the entire templates dictionary so the front-end can update labels
+    from each template's fields[].
     """
-    templates = load_templates()
-    # Return just the keys (the template['label'] string)
-    return jsonify(list(templates.keys()))
+    templates = load_templates()  # => a dict keyed by template['label']
+    return jsonify(templates)
 
 
 @app.route('/preview_label', methods=['POST'])

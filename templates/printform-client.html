@@ -27,7 +27,7 @@
       }
 
       .input-group label {
-        width: 100px; /* Fixed width for label alignment */
+        width: 150px; /* Fixed width for label alignment */
         text-align: right;
         margin-right: 10px;
       }
@@ -139,6 +139,9 @@
     <div id="toast-message"></div>
 
     <script>
+    // Store the entire templates dict from /get_templates
+    let allTemplates = {};
+
     // Generate a random session ID on page load
     const sessionId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
       .map(b => b.toString(16).padStart(2, '0')).join('');
@@ -192,25 +195,52 @@
       debounceTimer = setTimeout(updatePreview, DEBOUNCE_DELAY);
     }
 
+    /**
+     * Update each <label> in the .input-group to match the selected template's fields[].label
+     * 'templateName' is actually the dictionary key (e.g., "Default Label Template").
+     */
+    function updateFormLabels(templateName) {
+      const tmpl = allTemplates[templateName];
+      if (!tmpl || !tmpl.fields) return;
+
+      tmpl.fields.forEach(field => {
+        const el = document.getElementById(field.name);
+        if (el) {
+          const labelEl = el.parentElement.querySelector('label');
+          if (labelEl) {
+            labelEl.textContent = field.label + ":";
+          }
+        }
+      });
+    }
+
     // On page load, populate the template dropdown
     const templateSelect = document.getElementById('template-select');
     fetch('/get_templates')
       .then(resp => resp.json())
-      .then(templateKeys => {
+      .then(templates => {
+        // 'templates' is the entire dictionary keyed by each template's top-level "label".
+        // E.g. { "Default Label Template": {...fields...}, "Some Other Template": {...} }
+
+        allTemplates = templates;  // store globally
+
         // Clear anything existing
         templateSelect.innerHTML = '';
 
-        // Add each template as an <option>
-        for (const tk of templateKeys) {
+        // The keys are the template labels, like "Default Label Template"
+        const keys = Object.keys(templates);
+        for (const k of keys) {
           const opt = document.createElement('option');
-          opt.value = tk;
-          opt.textContent = tk;
+          opt.value = k;       // e.g. "Default Label Template"
+          opt.textContent = k; // same for displayed text
           templateSelect.appendChild(opt);
         }
 
-        // Immediately select the first option (if any) to avoid empty value
-        if (templateKeys.length > 0) {
-          templateSelect.value = templateKeys[0];
+        // Immediately select the first option (if any)
+        if (keys.length > 0) {
+          templateSelect.value = keys[0];
+          // Update labels for the default template
+          updateFormLabels(keys[0]);
         }
 
         // Trigger initial preview
@@ -218,8 +248,11 @@
       })
       .catch(err => console.error('Error loading templates:', err));
 
-    // Re-generate preview when the user changes the template
-    templateSelect.addEventListener('change', updatePreview);
+    // Re-generate preview AND update labels when the user changes the template
+    templateSelect.addEventListener('change', () => {
+      updateFormLabels(templateSelect.value);
+      updatePreview();
+    });
 
     // Attach input handlers for fields that need a preview update
     document.querySelectorAll('.debounced-field').forEach(field => {
