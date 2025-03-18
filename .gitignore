@@ -4,3 +4,4 @@ print*history*.*
 print*log.*
 saved-label*.json
 plantlist.json
+__pycache__
