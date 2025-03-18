@@ -1,7 +1,7 @@
 #!/bin/bash
 
 while true; do
-    python start-server.py
+    python printform-server.py
     echo "Restarting..."
     sleep 1
 done

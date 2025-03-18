@@ -3,7 +3,7 @@
 "C:\Program Files\Everything\Everything.exe"
 "C:\Windows\System32\explorer.exe" "C:\Users\dvchort\Desktop\printform\static\generated_labels"
 :loop
-python start-server.py
+python printform-server.py
 echo Restarting...
 timeout /t 0 > nul
 goto loop
