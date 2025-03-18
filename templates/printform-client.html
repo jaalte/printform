@@ -105,12 +105,14 @@
             <!-- Offsets Section (Positioned to the right of inputs) -->
             <div class="offset-controls">
                 <strong>Offsets</strong>
+                <!-- STEP=7 ON X-OFFSET -->
                 <div class="input-group">
                     <label for="x-offset">X:</label>
-                    <input type="number" id="x-offset" name="x-offset" class="debounced-field" value="0" step="1">
+                    <input type="number" id="x-offset" name="x-offset" class="debounced-field" value="0" step="7">
                     <button type="button" id="x-offset-down" class="offset-btn">←</button>
                     <button type="button" id="x-offset-up" class="offset-btn">→</button>
                 </div>
+                <!-- STEP=1 ON Y-OFFSET -->
                 <div class="input-group">
                     <label for="y-offset">Y:</label>
                     <input type="number" id="y-offset" name="y-offset" class="debounced-field" value="0" step="1">
@@ -124,6 +126,7 @@
         <!-- Print & Save Controls -->
         <div id="print-controls">
             <label for="print-count">Print Count:</label>
+            <!-- STEP=1 FOR PRINT COUNT -->
             <input type="number" id="print-count" name="print-count" value="1" min="0" step="1">
 
             <button type="button" id="print-one-btn">Print One</button>
@@ -196,11 +199,6 @@
       .then(templateKeys => {
         // Clear anything existing
         templateSelect.innerHTML = '';
-        // If you want a placeholder, you could do:
-        // const placeholder = document.createElement('option');
-        // placeholder.value = '';
-        // placeholder.textContent = 'Select template...';
-        // templateSelect.appendChild(placeholder);
 
         // Add each template as an <option>
         for (const tk of templateKeys) {
@@ -231,12 +229,26 @@
     // Offset button listeners
     document.getElementById('x-offset-down').addEventListener('click', () => {
       const xOffsetInput = document.getElementById('x-offset');
-      xOffsetInput.value = (parseInt(xOffsetInput.value) || 0) - 7;
+      const stepVal = parseFloat(xOffsetInput.step) || 1;
+      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) - stepVal;
+      // Format as integer if stepVal is integer
+      if (Number.isInteger(stepVal)) {
+        xOffsetInput.value = String(Math.round(xOffsetInput.value));
+      } else {
+        xOffsetInput.value = String(parseFloat(xOffsetInput.value));
+      }
       debouncedPreview();
     });
     document.getElementById('x-offset-up').addEventListener('click', () => {
       const xOffsetInput = document.getElementById('x-offset');
-      xOffsetInput.value = (parseInt(xOffsetInput.value) || 0) + 7;
+      const stepVal = parseFloat(xOffsetInput.step) || 1;
+      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) + stepVal;
+      // Format as integer if stepVal is integer
+      if (Number.isInteger(stepVal)) {
+        xOffsetInput.value = String(Math.round(xOffsetInput.value));
+      } else {
+        xOffsetInput.value = String(parseFloat(xOffsetInput.value));
+      }
       debouncedPreview();
     });
 
@@ -300,8 +312,34 @@
       .catch(err => console.error(err));
     });
 
-    // Optional: You could call updatePreview() again here if you want a second attempt
-    // once everything is fully loaded, but it's typically not needed.
+    // ADD SCROLL-WHEEL HANDLERS FOR NUMERIC INPUTS
+    document.querySelectorAll('input[type="number"]').forEach(numberInput => {
+      numberInput.addEventListener('wheel', (e) => {
+        // Prevent page scroll while using the wheel on the input
+        e.preventDefault();
+
+        const stepValue = parseFloat(numberInput.step) || 1;
+        let currentVal = parseFloat(numberInput.value) || 0;
+
+        // e.deltaY < 0 => scrolling up
+        if (e.deltaY < 0) {
+          currentVal += stepValue;
+        } else {
+          currentVal -= stepValue;
+        }
+
+        // If step is an integer, force an integer output
+        if (Number.isInteger(stepValue)) {
+          currentVal = Math.round(currentVal);
+        } else {
+          // Otherwise allow decimals, but strip trailing .0
+          currentVal = parseFloat(currentVal.toString());
+        }
+        numberInput.value = String(currentVal);
+
+        debouncedPreview();
+      }, { passive: false });
+    });
     </script>
 </body>
 </html>
