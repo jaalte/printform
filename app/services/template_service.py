@@ -29,11 +29,15 @@ class TemplateService:
                 if 'label' not in field_data:
                     field_data['label'] = field['name'].replace('_', ' ').title()
                 
+                # Create a copy of the field data to avoid modifying the original
+                field_data_copy = field_data.copy()
+                field_data_copy['label'] = field_data['label']  # Ensure label is included
+                
                 fields.append(LabelField(
                     name=field['name'],
                     x=field['x'],
                     y=field['y'],
-                    data=field_data
+                    data=field_data_copy
                 ))
 
             # Create LabelTemplate object
@@ -70,11 +74,15 @@ class TemplateService:
             if 'label' not in field_data:
                 field_data['label'] = field['name'].replace('_', ' ').title()
             
+            # Create a copy of the field data to avoid modifying the original
+            field_data_copy = field_data.copy()
+            field_data_copy['label'] = field_data['label']  # Ensure label is included
+            
             fields.append(LabelField(
                 name=field['name'],
                 x=field['x'],
                 y=field['y'],
-                data=field_data
+                data=field_data_copy
             ))
 
         return LabelTemplate(

@@ -3,6 +3,10 @@ from typing import Optional
 from PIL import Image
 from ..models.label import LabelSession
 from ..config.settings import PRINTER_NAME
+import win32print
+import win32ui
+import ImageWin
+import os
 
 class PrinterService:
     @staticmethod
@@ -12,34 +16,36 @@ class PrinterService:
 
     @staticmethod
     def print_label(image_path: str, copies: int, session: Optional[LabelSession] = None) -> None:
-        """Prints the given image `copies` times."""
-        if not PrinterService.is_printing_available():
-            raise RuntimeError("Printing is not available on this platform")
-
+        """Prints the given image `copies` times on Windows using win32print."""
         if copies <= 0:
             return
 
-        if platform.system() == 'Windows':
-            try:
-                import win32print
-                import win32ui
-                import ImageWin
-            except ImportError:
-                raise RuntimeError("Windows printing modules not available. Please install pywin32.")
+        if not os.path.exists(image_path):
+            raise RuntimeError(f"Image file not found: {image_path}")
 
-            hprinter = win32print.OpenPrinter(PRINTER_NAME)
+        try:
+            # Get the default printer if PRINTER_NAME is not found
+            try:
+                hprinter = win32print.OpenPrinter(PRINTER_NAME)
+            except Exception:
+                default_printer = win32print.GetDefaultPrinter()
+                hprinter = win32print.OpenPrinter(default_printer)
+
             printer_dc = win32ui.CreateDC()
             printer_dc.CreatePrinterDC(PRINTER_NAME)
 
+            # Get printer DPI
             dpi_x = printer_dc.GetDeviceCaps(88)  # HORZRES
             dpi_y = printer_dc.GetDeviceCaps(90)  # VERTRES
 
+            # Open and resize image
             image = Image.open(image_path)
             # Example dimension: 5" x 1" label
             target_width = int(5 * dpi_x)
             target_height = int(1 * dpi_y)
             image = image.resize((target_width, target_height))
 
+            # Start print job
             printer_dc.StartDoc(image_path)
             for _ in range(copies):
                 printer_dc.StartPage()
@@ -55,5 +61,6 @@ class PrinterService:
             if session:
                 from .storage_service import StorageService
                 StorageService.log_print_job(session, copies)
-        else:
-            raise RuntimeError("Printing is not supported on this platform")
+
+        except Exception as e:
+            raise RuntimeError(f"Failed to print: {str(e)}")
