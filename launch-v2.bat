@@ -1,0 +1,6 @@
+@echo off
+echo Installing/Updating Python packages...
+pip install -r requirements.txt
+ 
+echo Starting server with file watching...
+python watch_server.py 

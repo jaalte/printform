@@ -1,0 +1,83 @@
+/* Queue module container */
+#queue-module {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Queue controls */
+.queue-controls {
+    display: flex;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+#print-all-btn {
+    background: #28a745;
+}
+
+#print-all-btn:hover {
+    background: #218838;
+}
+
+#clear-queue-btn {
+    background: #dc3545;
+}
+
+#clear-queue-btn:hover {
+    background: #c82333;
+}
+
+/* Queue list */
+.queue-list {
+    display: grid;
+    gap: 15px;
+}
+
+.queue-item {
+    display: grid;
+    grid-template-columns: 1fr auto;
+    gap: 20px;
+    padding: 15px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    align-items: center;
+}
+
+.item-details p {
+    margin-bottom: 5px;
+}
+
+.item-details p:last-child {
+    margin-bottom: 0;
+}
+
+.item-actions {
+    display: flex;
+    gap: 10px;
+}
+
+.print-item-btn {
+    background: #28a745;
+}
+
+.print-item-btn:hover {
+    background: #218838;
+}
+
+.remove-item-btn {
+    background: #dc3545;
+}
+
+.remove-item-btn:hover {
+    background: #c82333;
+}
+
+/* Empty queue message */
+.empty-queue-message {
+    text-align: center;
+    color: #6c757d;
+    padding: 40px;
+    background: #f8f9fa;
+    border-radius: 4px;
+    font-style: italic;
+}

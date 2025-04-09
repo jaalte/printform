@@ -2,310 +2,34 @@
 <html>
 <head>
     <title>Plant Tag Printer</title>
-    <link rel="stylesheet" href="/static/printform-client.css">
+    <link rel="stylesheet" href="/static/main.css">
+    <link rel="stylesheet" href="/static/editor-module.css">
+    <link rel="stylesheet" href="/static/search-module.css">
+    <link rel="stylesheet" href="/static/queue-module.css">
 </head>
 <body>
-    <h1>Plant Tag Printer</h1>
-    
-    <!-- We put the template dropdown INSIDE the form so it's included in FormData() -->
-    <form id="label-form">
-        <!-- ### ADDED: Template selector at the top, so it’s included in the same form. -->
-        <div class="input-group">
-            <label for="template-select">Template:</label>
-            <select id="template-select" name="template_name">
-                <!-- Options get populated by JS -->
-            </select>
-        </div>
-
-        <div class="form-container">
-            <!-- Text Entry Section -->
-            <div class="data-inputs-container">
-                <strong>Text Entry</strong>
-                <div class="input-group">
-                    <label for="main_text">Main Text:</label>
-                    <input type="text" id="main_text" name="main_text" class="debounced-field">
-                </div>
-                <div class="input-group">
-                    <label for="midtext">Cultivar:</label>
-                    <input type="text" id="midtext" name="midtext" class="debounced-field">
-                </div>
-                <div class="input-group">
-                    <label for="subtext">Subtext:</label>
-                    <input type="text" id="subtext" name="subtext" class="debounced-field">
-                </div>
-            </div>
-
-            <!-- Offsets Section (Positioned to the right of inputs) -->
-            <div class="offset-controls">
-                <strong>Offsets</strong>
-                <!-- STEP=7 ON X-OFFSET -->
-                <div class="input-group">
-                    <label for="x-offset">X:</label>
-                    <input type="number" id="x-offset" name="x-offset" class="debounced-field" value="0" step="7">
-                    <button type="button" id="x-offset-down" class="offset-btn">←</button>
-                    <button type="button" id="x-offset-up" class="offset-btn">→</button>
-                </div>
-                <!-- STEP=1 ON Y-OFFSET -->
-                <div class="input-group">
-                    <label for="y-offset">Y:</label>
-                    <input type="number" id="y-offset" name="y-offset" class="debounced-field" value="0" step="1">
-                </div>
+    <div id="app">
+        <div class="modules-container">
+            <div id="editor-module" class="module"></div>
+            <div class="right-modules">
+                <div id="search-module" class="module"></div>
+                <div id="queue-module" class="module"></div>
             </div>
         </div>
-
-        <!-- Label Preview Image -->
-        <img id="label-image" src="" alt="Label Preview">
-
-        <!-- Print & Save Controls -->
-        <div id="print-controls">
-            <label for="print-count">Print Count:</label>
-            <!-- STEP=1 FOR PRINT COUNT -->
-            <input type="number" id="print-count" name="print-count" value="1" min="0" step="1">
-
-            <button type="button" id="print-one-btn">Print One</button>
-            <button type="button" id="print-batch-btn">Print Batch</button>
-            <button type="button" id="save-label-btn">Save Label</button>
         </div>
-    </form>
 
     <!-- Toast Message -->
     <div id="toast-message"></div>
 
-    <script>
-    // Store the entire templates dict from /get_templates
-    let allTemplates = {};
-
-    // Generate a random session ID on page load
-    const sessionId = Array.from(crypto.getRandomValues(new Uint8Array(8)))
-      .map(b => b.toString(16).padStart(2, '0')).join('');
-
-    // Debounce logic
-    let debounceTimer = null;
-    const DEBOUNCE_DELAY = 200;
-
-    function showToast(msg) {
-      const toastMessage = document.getElementById('toast-message');
-      toastMessage.textContent = msg;
-      toastMessage.style.display = 'block';
-      setTimeout(() => {
-        toastMessage.style.display = 'none';
-      }, 3000);
-    }
-
-    function updatePreview() {
-      const labelForm = document.getElementById('label-form');
-      const labelImage = document.getElementById('label-image');
-      const printControls = document.getElementById('print-controls');
-
-      const formData = new FormData(labelForm);
-      // Add session_id to the request
-      formData.append('session_id', sessionId);
-
-      fetch('/preview_label', {
-        method: 'POST',
-        body: formData
-      })
-      .then(r => r.json())
-      .then(data => {
-        console.log('Preview response:', data);
-        if (data.image_path) {
-          // Show the preview & print controls
-          const cacheBuster = new Date().getTime();
-          labelImage.src = `${data.image_path}?v=${cacheBuster}`;
-          labelImage.style.display = 'block';
-          printControls.style.display = 'block';
-        } else if (data.error) {
-          console.error('Preview error:', data.error);
-        }
-      })
-      .catch(err => console.error('Preview error:', err));
-    }
-
-    function debouncedPreview() {
-      if (debounceTimer) {
-        clearTimeout(debounceTimer);
-      }
-      debounceTimer = setTimeout(updatePreview, DEBOUNCE_DELAY);
-    }
-
-    /**
-     * Update each <label> in the .input-group to match the selected template's fields[].label
-     * 'templateName' is actually the dictionary key (e.g., "Default Label Template").
-     */
-    function updateFormLabels(templateName) {
-      const tmpl = allTemplates[templateName];
-      if (!tmpl || !tmpl.fields) return;
-
-      tmpl.fields.forEach(field => {
-        const el = document.getElementById(field.name);
-        if (el) {
-          const labelEl = el.parentElement.querySelector('label');
-          if (labelEl) {
-            labelEl.textContent = field.label + ":";
-          }
-        }
-      });
-    }
-
-    // On page load, populate the template dropdown
-    const templateSelect = document.getElementById('template-select');
-    fetch('/get_templates')
-      .then(resp => resp.json())
-      .then(templates => {
-        // 'templates' is the entire dictionary keyed by each template's top-level "label".
-        // E.g. { "Default Label Template": {...fields...}, "Some Other Template": {...} }
-
-        allTemplates = templates;  // store globally
-
-        // Clear anything existing
-        templateSelect.innerHTML = '';
-
-        // The keys are the template labels, like "Default Label Template"
-        const keys = Object.keys(templates);
-        for (const k of keys) {
-          const opt = document.createElement('option');
-          opt.value = k;       // e.g. "Default Label Template"
-          opt.textContent = k; // same for displayed text
-          templateSelect.appendChild(opt);
-        }
-
-        // Immediately select the first option (if any)
-        if (keys.length > 0) {
-          templateSelect.value = keys[0];
-          // Update labels for the default template
-          updateFormLabels(keys[0]);
-        }
-
-        // Trigger initial preview
-        updatePreview();
-      })
-      .catch(err => console.error('Error loading templates:', err));
-
-    // Re-generate preview AND update labels when the user changes the template
-    templateSelect.addEventListener('change', () => {
-      updateFormLabels(templateSelect.value);
-      updatePreview();
-    });
-
-    // Attach input handlers for fields that need a preview update
-    document.querySelectorAll('.debounced-field').forEach(field => {
-      field.addEventListener('input', debouncedPreview);
-    });
-
-    // Offset button listeners
-    document.getElementById('x-offset-down').addEventListener('click', () => {
-      const xOffsetInput = document.getElementById('x-offset');
-      const stepVal = parseFloat(xOffsetInput.step) || 1;
-      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) - stepVal;
-      // Format as integer if stepVal is integer
-      if (Number.isInteger(stepVal)) {
-        xOffsetInput.value = String(Math.round(xOffsetInput.value));
-      } else {
-        xOffsetInput.value = String(parseFloat(xOffsetInput.value));
-      }
-      debouncedPreview();
-    });
-    document.getElementById('x-offset-up').addEventListener('click', () => {
-      const xOffsetInput = document.getElementById('x-offset');
-      const stepVal = parseFloat(xOffsetInput.step) || 1;
-      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) + stepVal;
-      // Format as integer if stepVal is integer
-      if (Number.isInteger(stepVal)) {
-        xOffsetInput.value = String(Math.round(xOffsetInput.value));
-      } else {
-        xOffsetInput.value = String(parseFloat(xOffsetInput.value));
-      }
-      debouncedPreview();
-    });
-
-    // Print one label
-    const printCountInput = document.getElementById('print-count');
-    document.getElementById('print-one-btn').addEventListener('click', () => {
-      const countVal = parseInt(printCountInput.value) || 1;
-      fetch('/print_label', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ session_id: sessionId, count: 1 })
-      })
-      .then(r => r.json())
-      .then(data => {
-        console.log('Print one:', data);
-        if (countVal > 0) {
-          printCountInput.value = countVal - 1;
-        }
-        showToast('Printed one label.');
-      })
-      .catch(err => console.error(err));
-    });
-
-    // Print a batch
-    document.getElementById('print-batch-btn').addEventListener('click', () => {
-      const countVal = parseInt(printCountInput.value) || 0;
-      if (countVal <= 0) {
-        showToast("Can't print batch, no labels queued.");
-        return;
-      }
-      fetch('/print_label', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ session_id: sessionId, count: countVal })
-      })
-      .then(r => r.json())
-      .then(data => {
-        console.log('Print batch:', data);
-        printCountInput.value = 0;
-        showToast(`Printed batch of ${countVal}.`);
-      })
-      .catch(err => console.error(err));
-    });
-
-    // Save the label
-    document.getElementById('save-label-btn').addEventListener('click', () => {
-      fetch('/save_label', {
-        method: 'POST',
-        headers: {'Content-Type': 'application/json'},
-        body: JSON.stringify({ session_id: sessionId })
-      })
-      .then(r => r.json())
-      .then(data => {
-        console.log('Save label:', data);
-        if (data.error) {
-          showToast(`Error: ${data.error}`);
-        } else {
-          showToast(`Saved to: ${data.saved_path}`);
-        }
-      })
-      .catch(err => console.error(err));
-    });
-
-    // ADD SCROLL-WHEEL HANDLERS FOR NUMERIC INPUTS
-    document.querySelectorAll('input[type="number"]').forEach(numberInput => {
-      numberInput.addEventListener('wheel', (e) => {
-        // Prevent page scroll while using the wheel on the input
-        e.preventDefault();
-
-        const stepValue = parseFloat(numberInput.step) || 1;
-        let currentVal = parseFloat(numberInput.value) || 0;
-
-        // e.deltaY < 0 => scrolling up
-        if (e.deltaY < 0) {
-          currentVal += stepValue;
-        } else {
-          currentVal -= stepValue;
-        }
-
-        // If step is an integer, force an integer output
-        if (Number.isInteger(stepValue)) {
-          currentVal = Math.round(currentVal);
-        } else {
-          // Otherwise allow decimals, but strip trailing .0
-          currentVal = parseFloat(currentVal.toString());
-        }
-        numberInput.value = String(currentVal);
-
-        debouncedPreview();
-      }, { passive: false });
-    });
-    </script>
+    <!-- Core System -->
+    <script src="/static/js/EventBus.js"></script>
+    
+    <!-- Modules -->
+    <script src="/static/js/modules/EditorModule.js"></script>
+    <script src="/static/js/modules/SearchModule.js"></script>
+    <script src="/static/js/modules/QueueModule.js"></script>
+    
+    <!-- Main App -->
+    <script src="/static/js/app.js"></script>
 </body>
 </html>

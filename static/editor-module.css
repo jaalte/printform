@@ -1,0 +1,135 @@
+/* Editor module container */
+#editor-module {
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+/* Form layout */
+.form-container {
+    display: grid;
+    grid-template-columns: 2fr 1fr;
+    gap: 20px;
+    margin-bottom: 20px;
+}
+
+/* Input groups */
+.input-group {
+    margin-bottom: 15px;
+}
+
+.input-group label {
+    display: block;
+    margin-bottom: 5px;
+    font-weight: 500;
+}
+
+.input-group input,
+.input-group select {
+    width: 100%;
+}
+
+/* Data inputs container */
+.data-inputs-container {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 4px;
+}
+
+.data-inputs-container strong {
+    display: block;
+    margin-bottom: 15px;
+    color: #495057;
+}
+
+/* Offset controls */
+.offset-controls {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 4px;
+}
+
+.offset-controls strong {
+    display: block;
+    margin-bottom: 15px;
+    color: #495057;
+}
+
+.offset-controls .input-group {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.offset-controls input[type="number"] {
+    width: 80px;
+}
+
+.offset-btn {
+    padding: 8px 12px;
+    font-size: 16px;
+    background: #6c757d;
+}
+
+.offset-btn:hover {
+    background: #5a6268;
+}
+
+/* Label preview */
+#label-image {
+    display: block;
+    max-width: 100%;
+    height: auto;
+    margin: 20px auto;
+    border: 1px solid #dee2e6;
+    border-radius: 4px;
+    padding: 10px;
+    background: white;
+}
+
+/* Print controls */
+#print-controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 20px;
+    background: #f8f9fa;
+    border-radius: 4px;
+}
+
+#print-count {
+    width: 80px;
+}
+
+/* Print buttons */
+#print-one-btn {
+    background: #28a745;
+}
+
+#print-one-btn:hover {
+    background: #218838;
+}
+
+#print-batch-btn {
+    background: #17a2b8;
+}
+
+#print-batch-btn:hover {
+    background: #138496;
+}
+
+#save-label-btn {
+    background: #6c757d;
+}
+
+#save-label-btn:hover {
+    background: #5a6268;
+}
+
+#add-to-queue-btn {
+    background: #ffc107;
+    color: #212529;
+}
+
+#add-to-queue-btn:hover {
+    background: #e0a800;
+}

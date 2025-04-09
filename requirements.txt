@@ -1,3 +1,6 @@
 Flask>=2.0.0
 Pillow>=9.0.0
 pywin32>=305; platform_system == "Windows"  # Only install on Windows
+flask==3.0.0
+Werkzeug==3.0.1
+watchdog==3.0.0  # For file watching
