@@ -23,7 +23,7 @@ The application is built using a modular architecture with three main components
 
 ### Modules
 
-#### 1. Editor Module (`static/js/modules/EditorModule.js`)
+#### 1. Editor Module (`static/modules/editor/editor.js`)
 **Purpose**: Primary interface for creating and editing plant tags
 - Located in the left panel (50% of screen width)
 - Provides form inputs for plant tag data
@@ -31,7 +31,7 @@ The application is built using a modular architecture with three main components
 - Real-time preview of tag layout
 - Validation of input data
 
-#### 2. Search Module (`static/js/modules/SearchModule.js`)
+#### 2. Search Module (`static/modules/search/search.js`)
 **Purpose**: Quick access to existing plant tag templates and saved tags
 - Located in the top-right quarter
 - Search functionality with filters
@@ -39,7 +39,7 @@ The application is built using a modular architecture with three main components
 - Preview capabilities for existing tags
 - Quick-load functionality to editor
 
-#### 3. Queue Module (`static/js/modules/QueueModule.js`)
+#### 3. Queue Module (`static/modules/queue/queue.js`)
 **Purpose**: Manages the printing queue and print jobs
 - Located in the bottom-right quarter
 - Displays current queue status
@@ -54,16 +54,19 @@ The application is built using a modular architecture with three main components
 │   └── printform-client.html    # Main HTML template
 ├── static/
 │   ├── main.css                 # Global styles and layout
-│   ├── editor-module.css        # Editor-specific styles
-│   ├── search-module.css        # Search-specific styles
-│   ├── queue-module.css         # Queue-specific styles
-│   └── js/
-│       ├── EventBus.js         # Core communication system
-│       ├── app.js              # Main application logic
-│       └── modules/
-│           ├── EditorModule.js
-│           ├── SearchModule.js
-│           └── QueueModule.js
+│   ├── js/
+│   │   ├── EventBus.js         # Core communication system
+│   │   └── app.js              # Main application logic
+│   └── modules/
+│       ├── editor/
+│       │   ├── editor.js
+│       │   └── editor.css
+│       ├── search/
+│       │   ├── search.js
+│       │   └── search.css
+│       └── queue/
+│           ├── queue.js
+│           └── queue.css
 └── README.md                    # This documentation
 ```
 
