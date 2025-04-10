@@ -6,3 +6,4 @@ saved-label*.json
 plantlist.json
 __pycache__
 node_modules
+venv
