@@ -343,6 +343,7 @@ def print_label():
     """
     Prints the single preview image for a session, repeated 'count' times.
     Uses the form data & template from temp_label_store[session_id].
+    If count > 1, also saves the label to generated_labels.
     """
     data = request.get_json() or request.form
     session_id = data.get('session_id', '')
@@ -351,12 +352,17 @@ def print_label():
     if not session_id or count <= 0:
         return jsonify({"message": "Nothing to print."}), 200
 
+    # If printing multiple copies, save the label first
+    if count > 1:
+        save_label()
+
     preview_filename = f"preview_{session_id}.png"
     server_relative_path = f"/{PREVIEW_FOLDER}/{preview_filename}"
     print_label_file(server_relative_path, count, session_id=session_id)
 
     return jsonify({
-        "message": f"Printed {count} copies of preview image for session {session_id}."
+        "message": f"Printed {count} copies of preview image for session {session_id}." + 
+                  (" Label was automatically saved." if count > 1 else "")
     })
 
 @app.route('/save_label', methods=['POST'])
