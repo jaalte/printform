@@ -9,7 +9,7 @@
     
     <!-- We put the template dropdown INSIDE the form so it's included in FormData() -->
     <form id="label-form">
-        <!-- ### ADDED: Template selector at the top, so it’s included in the same form. -->
+        <!-- ### ADDED: Template selector at the top, so it's included in the same form. -->
         <div class="input-group">
             <label for="template-select">Template:</label>
             <select id="template-select" name="template_name">
@@ -193,7 +193,7 @@
     });
 
     // Offset button listeners
-    document.getElementById('x-offset-down').addEventListener('click', () => {
+    document.getElementById('x-offset-down').addEventListener('click', (event) => {
       const xOffsetInput = document.getElementById('x-offset');
       const stepVal = parseFloat(xOffsetInput.step) || 1;
       xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) - stepVal;
@@ -204,8 +204,13 @@
         xOffsetInput.value = String(parseFloat(xOffsetInput.value));
       }
       debouncedPreview();
+      
+      // If shift key is pressed, submit the form
+      if (event.shiftKey) {
+        document.getElementById('print-one-btn').click();
+      }
     });
-    document.getElementById('x-offset-up').addEventListener('click', () => {
+    document.getElementById('x-offset-up').addEventListener('click', (event) => {
       const xOffsetInput = document.getElementById('x-offset');
       const stepVal = parseFloat(xOffsetInput.step) || 1;
       xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) + stepVal;
@@ -216,6 +221,11 @@
         xOffsetInput.value = String(parseFloat(xOffsetInput.value));
       }
       debouncedPreview();
+      
+      // If shift key is pressed, submit the form
+      if (event.shiftKey) {
+        document.getElementById('print-one-btn').click();
+      }
     });
 
     // Print one label
