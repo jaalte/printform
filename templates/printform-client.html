@@ -203,11 +203,34 @@
       } else {
         xOffsetInput.value = String(parseFloat(xOffsetInput.value));
       }
-      debouncedPreview();
       
-      // If shift key is pressed, submit the form
+      // If shift key is pressed, update preview and print
       if (event.shiftKey) {
-        document.getElementById('print-one-btn').click();
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+
+        fetch('/preview_label', {
+          method: 'POST',
+          body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.image_path) {
+            const labelImage = document.getElementById('label-image');
+            const printControls = document.getElementById('print-controls');
+            const cacheBuster = new Date().getTime();
+            labelImage.src = `${data.image_path}?v=${cacheBuster}`;
+            labelImage.style.display = 'block';
+            printControls.style.display = 'block';
+            
+            // Now that preview is updated, print the label
+            document.getElementById('print-one-btn').click();
+          }
+        })
+        .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
       }
     });
     document.getElementById('x-offset-up').addEventListener('click', (event) => {
@@ -220,11 +243,34 @@
       } else {
         xOffsetInput.value = String(parseFloat(xOffsetInput.value));
       }
-      debouncedPreview();
       
-      // If shift key is pressed, submit the form
+      // If shift key is pressed, update preview and print
       if (event.shiftKey) {
-        document.getElementById('print-one-btn').click();
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+
+        fetch('/preview_label', {
+          method: 'POST',
+          body: formData
+        })
+        .then(r => r.json())
+        .then(data => {
+          if (data.image_path) {
+            const labelImage = document.getElementById('label-image');
+            const printControls = document.getElementById('print-controls');
+            const cacheBuster = new Date().getTime();
+            labelImage.src = `${data.image_path}?v=${cacheBuster}`;
+            labelImage.style.display = 'block';
+            printControls.style.display = 'block';
+            
+            // Now that preview is updated, print the label
+            document.getElementById('print-one-btn').click();
+          }
+        })
+        .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
       }
     });
 
