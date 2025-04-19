@@ -3,9 +3,46 @@
 <head>
     <title>Plant Tag Printer</title>
     <link rel="stylesheet" href="/static/printform-client.css">
+    <style>
+        /* Right sidebar styles */
+        .sidebar {
+            position: fixed;
+            right: 0;
+            top: 20px; /* Move to top right instead of center */
+            background-color: #f1f1f1;
+            padding: 10px;
+            border-radius: 5px 0 0 5px;
+            box-shadow: -2px 0 5px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        .sidebar-btn {
+            display: block;
+            width: 130px; /* Set fixed width to prevent differences */
+            padding: 8px 12px;
+            margin: 5px 0;
+            background-color: #3498db;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            text-align: center;
+            text-decoration: none;
+            font-size: 14px;
+            box-sizing: border-box; /* Ensure padding doesn't affect width */
+        }
+        .sidebar-btn:hover {
+            background-color: #2980b9;
+        }
+    </style>
 </head>
 <body>
     <h1>Plant Tag Printer</h1>
+    
+    <!-- Right Sidebar -->
+    <div class="sidebar">
+        <a href="/tag-manager" class="sidebar-btn">Tag Manager</a>
+        <button id="migrate-btn" class="sidebar-btn">Database Migration</button>
+    </div>
     
     <!-- We put the template dropdown INSIDE the form so it's included in FormData() -->
     <form id="label-form">
@@ -361,6 +398,13 @@
 
         debouncedPreview();
       }, { passive: false });
+    });
+    
+    // Database migration button with confirmation
+    document.getElementById('migrate-btn').addEventListener('click', () => {
+      if (confirm('Are you sure you want to migrate data from JSON files to the database? This operation is typically only needed once.')) {
+        window.location.href = '/migrate-data';
+      }
     });
     </script>
 </body>
