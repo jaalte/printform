@@ -128,10 +128,10 @@ def save_to_csv(fieldnames):
         values_dict = dict(zip(fieldnames, values))
         writer.writerow(values_dict)
 
-def generate_png(template):
+def generate_png(template, formdata, offset_adjustment):
     """
     Generates the label image in memory according to
-    the template and request.form data.
+    the template, formdata, and offset_adjustment.
     """
     label_base_path = template['base_image'] or "static/label-templates/label_base.png"
     
@@ -142,7 +142,7 @@ def generate_png(template):
         name = field['name']
         x, y = field['x'], field['y']
         data = field['data']
-        text = request.form.get(name, '')
+        text = formdata.get(name, '')
 
         if data['type'] == 'text':
             font_base = data['style']['font-base']
@@ -165,8 +165,9 @@ def generate_png(template):
             font = ImageFont.truetype(font_path, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
 
-    # Apply offsets
-    dx, dy = template["offsets"]
+    # Apply offsets - combine template offsets with adjustment
+    dx = template["offsets"][0] + offset_adjustment[0]
+    dy = template["offsets"][1] + offset_adjustment[1]
     return offset_image(img, dx, dy)
 
 def append_to_saved_index(entry):
@@ -188,8 +189,8 @@ def append_to_saved_index(entry):
 
 def append_to_print_log(session_id, copies):
     """
-    Appends a record to print-log.json containing the form data and template
-    used to generate the label. These are loaded from temp_label_store.
+    Appends a record to print-log.json containing the form data, template,
+    and offset adjustments used to generate the label. These are loaded from temp_label_store.
     """
     log_path = os.path.join(app.root_path, PRINT_LOG_FILE)
     if os.path.exists(log_path):
@@ -201,11 +202,13 @@ def append_to_print_log(session_id, copies):
     entry_data = temp_label_store.get(session_id, {})
     used_formdata = entry_data.get('used_formdata', {})
     label_template = entry_data.get('label_template', {})
+    offset_adjustment = entry_data.get('offset_adjustment', (0, 0))
 
     log_entry = {
         "session_id": session_id,
         "count": copies,
         "formdata": used_formdata,        # the data used in generate_png
+        "offset_adjustment": offset_adjustment, # the offset adjustments applied
         "label_template": label_template, # the template used
         "unix_time": int(datetime.now().timestamp()),
         "time": datetime.now().isoformat()
@@ -279,7 +282,7 @@ def preview_label():
     """
     Generate/update a single "preview" image in `static/preview_images/`
     for the given session_id. Overwrites the same file each time.
-    Also saves 'used_formdata' and 'label_template' in temp_label_store.
+    Also saves 'used_formdata', 'label_template', and 'offset_adjustment' in temp_label_store.
     """
     session_id = request.form.get('session_id', '')
     if not session_id:
@@ -303,9 +306,11 @@ def preview_label():
             **base_template
         }
 
-    # Incorporate offset adjustments
-    template['offsets'][0] += int(request.form.get('x-offset', 0))
-    template['offsets'][1] += int(request.form.get('y-offset', 0))
+    # Get offset adjustments
+    offset_adjustment = (
+        int(request.form.get('x-offset', 0)),
+        int(request.form.get('y-offset', 0))
+    )
 
     # Identify relevant field names
     fieldnames = [field["name"] for field in template['fields']]
@@ -315,7 +320,7 @@ def preview_label():
     save_to_csv(fieldnames)
 
     # Generate the in-memory label
-    img = generate_png(template)
+    img = generate_png(template, used_formdata, offset_adjustment)
 
     # Construct the preview file path
     preview_filename = f"preview_{session_id}.png"
@@ -328,7 +333,8 @@ def preview_label():
     # Store data for later retrieval by /print_label
     temp_label_store[session_id] = {
         "used_formdata": used_formdata,       # data used to generate the label
-        "label_template": template,
+        "label_template": template,           # the template used
+        "offset_adjustment": offset_adjustment, # the offset adjustments applied
         "date_created": datetime.now().isoformat(),
         "preview_filename": preview_filename,
     }
