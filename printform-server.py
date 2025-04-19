@@ -10,6 +10,8 @@ import shutil
 import win32print
 import win32ui
 from datetime import datetime
+from tag_routes import register_tag_routes
+from plant_tag import PlantTagDatabase
 
 ###############################################################################
 # CONFIG / PATHS
@@ -49,6 +51,8 @@ label_template_path = 'static/label-templates/label_template_default.json'
 ###############################################################################
 temp_label_store = {}
 
+# Initialize PlantTag database
+plant_tag_db = PlantTagDatabase()
 
 ###############################################################################
 # INITIALIZATION
@@ -442,6 +446,48 @@ def download_image(filename):
 def serve_preview_images(filename):
     return send_from_directory(PREVIEW_FOLDER, filename)
 
+@app.route('/migrate-data')
+def migrate_data():
+    """
+    Migrate existing data from JSON files to the PlantTag database.
+    Visit this URL in your browser to start the migration.
+    """
+    try:
+        saved_index_path = os.path.join(app.root_path, SAVED_INDEX_FILE)
+        print_log_path = os.path.join(app.root_path, PRINT_LOG_FILE)
+        
+        # Check if files exist
+        if not os.path.exists(saved_index_path):
+            return jsonify({
+                "success": False,
+                "error": f"Saved index file not found at: {saved_index_path}"
+            }), 404
+            
+        if not os.path.exists(print_log_path):
+            return jsonify({
+                "success": False,
+                "error": f"Print log file not found at: {print_log_path}"
+            }), 404
+        
+        # Perform migration
+        count = plant_tag_db.migrate_from_json(
+            saved_index_path=saved_index_path,
+            print_log_path=print_log_path
+        )
+        
+        return jsonify({
+            "success": True,
+            "message": f"Successfully migrated {count} tags to the database",
+            "tags_migrated": count
+        })
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Migration failed: {str(e)}"
+        }), 500
+
 if __name__ == '__main__':
     main()
+    # Register tag management routes
+    register_tag_routes(app)
     app.run(debug=True)

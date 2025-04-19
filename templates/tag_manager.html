@@ -1,0 +1,639 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Plant Tag Manager</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            margin: 0;
+            padding: 20px;
+            color: #333;
+            overflow-y: scroll; /* Always show vertical scrollbar */
+        }
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+        }
+        h1, h2, h3 {
+            color: #2c3e50;
+        }
+        .search-bar {
+            display: flex;
+            margin-bottom: 20px;
+        }
+        .search-bar input {
+            flex: 1;
+            padding: 10px;
+            font-size: 16px;
+            border: 1px solid #ddd;
+            border-radius: 4px 0 0 4px;
+        }
+        .search-bar button {
+            padding: 10px 15px;
+            background: #3498db;
+            color: white;
+            border: none;
+            border-radius: 0 4px 4px 0;
+            cursor: pointer;
+        }
+        .tags-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+            gap: 20px;
+        }
+        .tag-card {
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            overflow: hidden;
+            box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        }
+        .tag-image {
+            width: 100%;
+            height: 150px;
+            object-fit: contain;
+            background-color: #f9f9f9;
+        }
+        .tag-details {
+            padding: 15px;
+        }
+        .tag-title {
+            font-size: 18px;
+            font-weight: bold;
+            margin: 0 0 10px 0;
+        }
+        .tag-info {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .tag-meta {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 10px;
+            font-size: 12px;
+            color: #7f8c8d;
+        }
+        .confirmed-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #2ecc71;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .draft-badge {
+            display: inline-block;
+            padding: 3px 8px;
+            background-color: #e74c3c;
+            color: white;
+            border-radius: 3px;
+            font-size: 12px;
+        }
+        .filter-options {
+            margin-bottom: 20px;
+        }
+        .filter-options label {
+            margin-right: 15px;
+        }
+        .pagination {
+            display: flex;
+            justify-content: center;
+            margin-top: 20px;
+        }
+        .pagination button {
+            padding: 8px 15px;
+            margin: 0 5px;
+            background: #f1f1f1;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .pagination button.active {
+            background: #3498db;
+            color: white;
+            border-color: #3498db;
+        }
+        .print-button {
+            background-color: #3498db;
+            color: white;
+            border: none;
+            padding: 5px 10px;
+            border-radius: 3px;
+            cursor: pointer;
+            margin-top: 10px;
+        }
+        .print-button:hover {
+            background-color: #2980b9;
+        }
+        .no-results {
+            text-align: center;
+            padding: 40px;
+            color: #7f8c8d;
+        }
+        .stats-panel {
+            background-color: #f9f9f9;
+            border-radius: 4px;
+            padding: 15px;
+            margin-bottom: 20px;
+        }
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 15px;
+        }
+        .stat-item {
+            text-align: center;
+            padding: 10px;
+            background-color: white;
+            border-radius: 4px;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.1);
+        }
+        .stat-value {
+            font-size: 24px;
+            font-weight: bold;
+            color: #2c3e50;
+            margin: 5px 0;
+        }
+        .stat-label {
+            color: #7f8c8d;
+            font-size: 14px;
+        }
+        .loading {
+            text-align: center;
+            padding: 20px;
+            color: #7f8c8d;
+            font-style: italic;
+        }
+        
+        .search-bar input:focus {
+            outline: none;
+            border-color: #3498db;
+            box-shadow: 0 0 5px rgba(52, 152, 219, 0.5);
+        }
+        
+        .search-bar {
+            position: relative;
+        }
+        
+        .search-icon {
+            position: absolute;
+            right: 54px; /* Adjust to position icon inside the input, before the button */
+            top: 50%;
+            transform: translateY(-50%);
+            color: #95a5a6;
+            transition: all 0.3s;
+        }
+        
+        .search-icon.searching {
+            color: #3498db;
+            animation: pulse 1.5s infinite;
+        }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .clear-search {
+            position: absolute;
+            right: 65px;
+            top: 50%;
+            transform: translateY(-50%);
+            background: none;
+            border: none;
+            color: #7f8c8d;
+            cursor: pointer;
+            font-size: 16px;
+            display: none;
+        }
+        
+        .clear-search:hover {
+            color: #e74c3c;
+        }
+        
+        .refresh-button {
+            display: none; /* Hide the button */
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>Plant Tag Manager</h1>
+        
+        <div class="stats-panel">
+            <h2>Tag Statistics</h2>
+            <div class="stats-grid">
+                <div class="stat-item">
+                    <div class="stat-value" id="total-tags">0</div>
+                    <div class="stat-label">Total Tags</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="confirmed-tags">0</div>
+                    <div class="stat-label">Confirmed Tags</div>
+                </div>
+                <div class="stat-item">
+                    <div class="stat-value" id="total-prints">0</div>
+                    <div class="stat-label">Total Prints</div>
+                </div>
+            </div>
+        </div>
+        
+        <div class="search-bar">
+            <input type="text" id="search-input" placeholder="Search tags..." />
+            <span class="search-icon">🔍</span>
+            <button class="clear-search" id="clear-search">✕</button>
+            <button id="search-button">Search</button>
+        </div>
+        
+        <div class="filter-options">
+            <label>
+                <input type="checkbox" id="confirmed-only" /> 
+                Show confirmed tags only
+            </label>
+        </div>
+        
+        <div class="tags-container" id="tags-container">
+            <!-- Tags will be populated here via JavaScript -->
+        </div>
+        
+        <div class="no-results" id="no-results" style="display: none;">
+            <h3>No tags found</h3>
+            <p>Try adjusting your search criteria or create a new tag.</p>
+        </div>
+        
+        <div class="pagination" id="pagination">
+            <button id="prev-page">Previous</button>
+            <span id="page-info">Page 1</span>
+            <button id="next-page">Next</button>
+        </div>
+    </div>
+    
+    <script>
+        // Current state
+        const state = {
+            currentPage: 1,
+            totalPages: 1,
+            limit: 12,
+            query: '',
+            confirmedOnly: false,
+            allTags: [], // Store all loaded tags for client-side filtering
+            filteredTags: [], // Filtered tags based on search query
+            isInitialLoad: true,
+            lastRefreshTime: 0 // Track when we last fetched data from the server
+        };
+        
+        // Auto-refresh parameters
+        const AUTO_REFRESH_INTERVAL = 60000; // Refresh data after 60 seconds of inactivity
+        let autoRefreshTimer = null;
+        
+        // Elements
+        const tagsContainer = document.getElementById('tags-container');
+        const noResults = document.getElementById('no-results');
+        const searchInput = document.getElementById('search-input');
+        const searchButton = document.getElementById('search-button');
+        const confirmedOnlyCheckbox = document.getElementById('confirmed-only');
+        const prevButton = document.getElementById('prev-page');
+        const nextButton = document.getElementById('next-page');
+        const pageInfo = document.getElementById('page-info');
+        const totalTagsElement = document.getElementById('total-tags');
+        const confirmedTagsElement = document.getElementById('confirmed-tags');
+        const totalPrintsElement = document.getElementById('total-prints');
+        
+        // Load initial tags or fetch more when needed
+        function loadTags(forceRefresh = false) {
+            const currentTime = Date.now();
+            
+            // Auto-refresh data if it's been a while since last refresh
+            if (!forceRefresh && !state.isInitialLoad && state.allTags.length > 0) {
+                // If data is recent (less than AUTO_REFRESH_INTERVAL ms old), use client-side filtering
+                if (currentTime - state.lastRefreshTime < AUTO_REFRESH_INTERVAL) {
+                    filterTagsClientSide();
+                    return;
+                }
+                // Otherwise fall through to server refresh
+            }
+            
+            const offset = (state.currentPage - 1) * state.limit;
+            const queryParams = new URLSearchParams({
+                q: state.isInitialLoad ? '' : state.query, // Only use server-side search on initial load or pagination
+                confirmed_only: state.confirmedOnly,
+                limit: 1000, // Fetch more tags to enable client-side filtering
+                offset: offset
+            });
+            
+            // Show loading indicator
+            tagsContainer.innerHTML = '<p class="loading">Loading tags...</p>';
+            document.querySelector('.search-icon').classList.add('searching');
+            
+            fetch(`/api/tags?${queryParams}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    document.querySelector('.search-icon').classList.remove('searching');
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    
+                    // Store all tags for client-side filtering
+                    state.allTags = data.tags;
+                    state.isInitialLoad = false;
+                    state.lastRefreshTime = Date.now();
+                    
+                    // Apply any existing filter
+                    filterTagsClientSide();
+                    
+                    // Show/hide clear button based on search input
+                    const clearButton = document.getElementById('clear-search');
+                    if (state.query.length > 0) {
+                        clearButton.style.display = 'block';
+                    } else {
+                        clearButton.style.display = 'none';
+                    }
+                    
+                    // Reset auto-refresh timer
+                    resetAutoRefreshTimer();
+                })
+                .catch(error => {
+                    document.querySelector('.search-icon').classList.remove('searching');
+                    console.error('Error loading tags:', error);
+                    tagsContainer.innerHTML = `
+                        <div style="text-align: center; padding: 20px; color: #e74c3c;">
+                            <h3>Error Loading Tags</h3>
+                            <p>${error.message || 'An error occurred while trying to load tags'}</p>
+                            <button onclick="loadTags(true)" style="margin-top: 10px; padding: 5px 10px;">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Reset the auto-refresh timer
+        function resetAutoRefreshTimer() {
+            // Clear any existing timer
+            if (autoRefreshTimer) {
+                clearTimeout(autoRefreshTimer);
+            }
+            
+            // Set a new timer to refresh data after the interval
+            autoRefreshTimer = setTimeout(() => {
+                console.log("Auto-refreshing data...");
+                loadTags(true); // Force refresh after inactivity
+            }, AUTO_REFRESH_INTERVAL);
+        }
+        
+        // Reset timer on user interaction
+        function registerUserActivity() {
+            resetAutoRefreshTimer();
+        }
+        
+        // Filter tags client-side based on current query and options
+        function filterTagsClientSide() {
+            document.querySelector('.search-icon').classList.add('searching');
+            
+            // Use setTimeout to prevent UI blocking during filtering
+            setTimeout(() => {
+                const query = state.query.toLowerCase();
+                let filteredTags = state.allTags;
+                
+                // Apply filters
+                if (query) {
+                    filteredTags = filteredTags.filter(tag => {
+                        // Search in all formdata values
+                        return Object.values(tag.formdata).some(value => 
+                            String(value).toLowerCase().includes(query)
+                        );
+                    });
+                }
+                
+                if (state.confirmedOnly) {
+                    filteredTags = filteredTags.filter(tag => tag.confirmed);
+                }
+                
+                // Save filtered results
+                state.filteredTags = filteredTags;
+                
+                // Apply pagination
+                const startIndex = (state.currentPage - 1) * state.limit;
+                const endIndex = startIndex + state.limit;
+                const paginatedTags = filteredTags.slice(startIndex, endIndex);
+                
+                // Render results
+                renderTags(paginatedTags);
+                updatePagination(paginatedTags.length, filteredTags.length);
+                
+                document.querySelector('.search-icon').classList.remove('searching');
+                
+                // Show/hide clear button
+                const clearButton = document.getElementById('clear-search');
+                clearButton.style.display = query ? 'block' : 'none';
+            }, 0);
+        }
+        
+        // Render tags to the container
+        function renderTags(tags) {
+            if (!tags || tags.length === 0) {
+                tagsContainer.innerHTML = '';
+                noResults.style.display = 'block';
+                return;
+            }
+            
+            noResults.style.display = 'none';
+            tagsContainer.innerHTML = '';
+            
+            // Pre-reserve height to prevent layout shifts
+            tagsContainer.style.minHeight = `${Math.ceil(tags.length / 3) * 350}px`;
+            
+            tags.forEach(tag => {
+                const template = `
+                    <div class="tag-card" data-id="${tag.tag_id}">
+                        <img src="${tag.image_path}" alt="Plant Tag" class="tag-image">
+                        <div class="tag-details">
+                            <div class="tag-title">${tag.formdata.main_text || 'Untitled'}</div>
+                            <div class="tag-info">${tag.formdata.midtext || ''}</div>
+                            <div class="tag-info">${tag.formdata.subtext || ''}</div>
+                            <div class="tag-meta">
+                                <span>Template: ${tag.template.label || 'Default'}</span>
+                                <span>${tag.confirmed ? 
+                                    '<span class="confirmed-badge">Confirmed</span>' : 
+                                    '<span class="draft-badge">Draft</span>'}</span>
+                            </div>
+                            <div class="tag-meta">
+                                <span>Created: ${new Date(tag.created_date).toLocaleDateString()}</span>
+                                <span>Prints: ${tag.print_history.reduce((sum, record) => sum + record.copies, 0)}</span>
+                            </div>
+                            <button class="print-button" onclick="printTag(${tag.tag_id})">Print</button>
+                        </div>
+                    </div>
+                `;
+                
+                tagsContainer.innerHTML += template;
+            });
+        }
+        
+        // Update pagination UI
+        function updatePagination(count, total) {
+            state.totalPages = Math.ceil(total / state.limit) || 1;
+            pageInfo.textContent = `Page ${state.currentPage} of ${state.totalPages} (${total} total)`;
+            
+            prevButton.disabled = state.currentPage <= 1;
+            nextButton.disabled = state.currentPage >= state.totalPages;
+        }
+        
+        // Load statistics
+        function loadStats() {
+            fetch('/api/tags/stats')
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    totalTagsElement.textContent = data.total_tags;
+                    confirmedTagsElement.textContent = data.confirmed_tags;
+                    totalPrintsElement.textContent = data.total_prints;
+                })
+                .catch(error => {
+                    console.error('Error loading stats:', error);
+                    document.querySelector('.stats-grid').innerHTML = `
+                        <div style="grid-column: 1 / -1; text-align: center; padding: 10px; color: #e74c3c;">
+                            <p>Error loading statistics: ${error.message || 'Failed to load statistics'}</p>
+                            <button onclick="loadStats()" style="margin-top: 5px; padding: 5px 10px;">
+                                Try Again
+                            </button>
+                        </div>
+                    `;
+                });
+        }
+        
+        // Print a tag
+        function printTag(tagId) {
+            if (confirm('Print this tag?')) {
+                registerUserActivity();
+                fetch('/api/tags/' + tagId + '/print', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ copies: 1 })
+                })
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error(`HTTP error ${response.status}`);
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    if (data.error) {
+                        throw new Error(data.error);
+                    }
+                    alert(data.message);
+                    loadTags(true); // Force refresh after printing to get latest data
+                    loadStats(); // Reload stats
+                })
+                .catch(error => {
+                    console.error('Error printing tag:', error);
+                    alert(`Error printing tag: ${error.message || 'Print operation failed'}`);
+                });
+            }
+        }
+        
+        // Event Listeners
+        searchButton.addEventListener('click', () => {
+            state.query = searchInput.value;
+            state.currentPage = 1;
+            filterTagsClientSide();
+            registerUserActivity();
+        });
+        
+        // Add a debounce function with shorter delay for client-side filtering
+        function debounce(func, wait) {
+            let timeout;
+            return function(...args) {
+                const context = this;
+                clearTimeout(timeout);
+                timeout = setTimeout(() => func.apply(context, args), wait);
+            };
+        }
+        
+        // Update search results as user types (with shorter 100ms debounce for client-side filtering)
+        const debouncedSearch = debounce(() => {
+            state.query = searchInput.value;
+            state.currentPage = 1;
+            filterTagsClientSide();
+            registerUserActivity();
+        }, 100);
+        
+        searchInput.addEventListener('input', debouncedSearch);
+        
+        searchInput.addEventListener('keypress', (e) => {
+            if (e.key === 'Enter') {
+                e.preventDefault(); // Prevent form submission
+                state.query = searchInput.value;
+                state.currentPage = 1;
+                filterTagsClientSide();
+                registerUserActivity();
+            }
+        });
+        
+        confirmedOnlyCheckbox.addEventListener('change', () => {
+            state.confirmedOnly = confirmedOnlyCheckbox.checked;
+            state.currentPage = 1;
+            // If we have tags loaded, use client-side filtering, otherwise fetch from server
+            if (state.allTags.length > 0) {
+                filterTagsClientSide();
+            } else {
+                loadTags(true);
+            }
+            registerUserActivity();
+        });
+        
+        prevButton.addEventListener('click', () => {
+            if (state.currentPage > 1) {
+                state.currentPage--;
+                filterTagsClientSide();
+                registerUserActivity();
+            }
+        });
+        
+        nextButton.addEventListener('click', () => {
+            if (state.currentPage < state.totalPages) {
+                state.currentPage++;
+                filterTagsClientSide();
+                registerUserActivity();
+            }
+        });
+        
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            loadTags(true); // Force initial load
+            loadStats();
+            
+            // Add clear search button functionality
+            document.getElementById('clear-search').addEventListener('click', () => {
+                searchInput.value = '';
+                state.query = '';
+                state.currentPage = 1;
+                filterTagsClientSide();
+                document.getElementById('clear-search').style.display = 'none';
+            });
+            
+            // Register activity listeners for all interactive elements
+            document.addEventListener('click', registerUserActivity);
+            document.addEventListener('keypress', registerUserActivity);
+            document.addEventListener('scroll', registerUserActivity);
+        });
+    </script>
+</body>
+</html> 
