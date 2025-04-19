@@ -26,7 +26,7 @@ PREVIEW_FOLDER = 'static/preview_images'
 os.makedirs(PREVIEW_FOLDER, exist_ok=True)
 
 # Where permanent files are saved if user chooses "Save Label"
-FINAL_LABELS_DIR = 'static/generated_labels'
+FINAL_LABELS_DIR = 'static/labels/generated_labels'
 os.makedirs(FINAL_LABELS_DIR, exist_ok=True)
 
 # Index file that tracks all saved labels
@@ -121,16 +121,6 @@ def offset_image(img, dx, dy):
     offset_img.paste(cropped_img, (paste_x, paste_y))
 
     return offset_img
-
-def save_to_csv(fieldnames):
-    """Adds the form values to print_history.csv, if desired."""
-    with open('print_history.csv', mode='a', newline='', encoding='utf-8') as csvfile:
-        writer = csv.DictWriter(csvfile, fieldnames=fieldnames)
-        if csvfile.tell() == 0:
-            writer.writeheader()
-        values = [request.form.get(name, '') for name in fieldnames]
-        values_dict = dict(zip(fieldnames, values))
-        writer.writerow(values_dict)
 
 def generate_png(template, formdata, offset_adjustment):
     """
@@ -320,9 +310,6 @@ def preview_label():
     fieldnames = [field["name"] for field in template['fields']]
     used_formdata = {name: request.form.get(name, '') for name in fieldnames}
 
-    # Optionally log to CSV
-    save_to_csv(fieldnames)
-
     # Generate the in-memory label
     img = generate_png(template, used_formdata, offset_adjustment)
 
@@ -379,7 +366,7 @@ def print_label():
 def save_label():
     """
     Copies the single preview file for this session from preview_images to
-    static/generated_labels, then appends an entry to saved-label-index.json.
+    FINAL_LABELS_DIR, then appends an entry to saved-label-index.json.
     Now includes main_text, midtext, and subtext in the filename.
     """
     data = request.get_json() or request.form

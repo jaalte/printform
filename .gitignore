@@ -1,4 +1,4 @@
-static/generated_labels*
+static/labels/*
 preview_images
 print*history*.*
 print*log.*
@@ -8,3 +8,7 @@ __pycache__
 node_modules
 print-log-old-*.json
 plant_tags.db
+*backup*
+utility-scripts/orphan-labels/
+utility-scripts/conflicts.json
+utility-scripts/orphan-logs.csv

@@ -22,7 +22,7 @@ class PlantTag:
     """
     
     DB_PATH = "plant_tags.db"
-    FINAL_LABELS_DIR = 'static/generated_labels'
+    FINAL_LABELS_DIR = 'static/labels/generated_labels'
     
     def __init__(self, 
                  formdata: Dict[str, str], 

@@ -6,13 +6,17 @@ import json
 import shutil
 from datetime import datetime
 
-# Paths and file names
-CSV_FILE = './print_history.csv'
-LABELS_FOLDER = './static/generated_labels'
+# Input paths - relative to parent directory
+CSV_FILE = '../print_history.csv'
+LABELS_FOLDER = '../static/labels/generated_labels'
+
+# Output paths - save to utility-scripts directory
 ORPHAN_LABELS_FOLDER = './orphan-labels'
 ORPHAN_LOGS_CSV = './orphan-logs.csv'
-PLANTLIST_JSON = './plantlist.json'
 CONFLICTS_JSON = './conflicts.json'
+
+# Output path for plantlist.json - this needs to be in root for migrate_database.py
+PLANTLIST_JSON = '../plantlist.json'
 
 # Create the orphan-labels folder if it doesn't exist
 if not os.path.exists(ORPHAN_LABELS_FOLDER):
