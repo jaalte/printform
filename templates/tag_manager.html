@@ -246,15 +246,19 @@
         
         <div class="search-bar">
             <input type="text" id="search-input" placeholder="Search tags..." />
-            <span class="search-icon">🔍</span>
+            <span class="search-icon"></span>
             <button class="clear-search" id="clear-search">✕</button>
             <button id="search-button">Search</button>
         </div>
         
         <div class="filter-options">
             <label>
-                <input type="checkbox" id="confirmed-only" /> 
-                Show confirmed tags only
+                Filter: 
+                <select id="status-filter">
+                    <option value="all">All</option>
+                    <option value="confirmed">Confirmed</option>
+                    <option value="unconfirmed">Unconfirmed</option>
+                </select>
             </label>
         </div>
         
@@ -281,7 +285,7 @@
             totalPages: 1,
             limit: 12,
             query: '',
-            confirmedOnly: false,
+            filterStatus: 'all',
             allTags: [], // Store all loaded tags for client-side filtering
             filteredTags: [], // Filtered tags based on search query
             isInitialLoad: true,
@@ -297,7 +301,7 @@
         const noResults = document.getElementById('no-results');
         const searchInput = document.getElementById('search-input');
         const searchButton = document.getElementById('search-button');
-        const confirmedOnlyCheckbox = document.getElementById('confirmed-only');
+        const statusFilter = document.getElementById('status-filter');
         const prevButton = document.getElementById('prev-page');
         const nextButton = document.getElementById('next-page');
         const pageInfo = document.getElementById('page-info');
@@ -322,7 +326,7 @@
             const offset = (state.currentPage - 1) * state.limit;
             const queryParams = new URLSearchParams({
                 q: state.isInitialLoad ? '' : state.query, // Only use server-side search on initial load or pagination
-                confirmed_only: state.confirmedOnly,
+                filter_status: state.filterStatus,
                 limit: 1000, // Fetch more tags to enable client-side filtering
                 offset: offset
             });
@@ -416,8 +420,11 @@
                     });
                 }
                 
-                if (state.confirmedOnly) {
+                // Apply status filter
+                if (state.filterStatus === 'confirmed') {
                     filteredTags = filteredTags.filter(tag => tag.confirmed);
+                } else if (state.filterStatus === 'unconfirmed') {
+                    filteredTags = filteredTags.filter(tag => !tag.confirmed);
                 }
                 
                 // Save filtered results
@@ -590,8 +597,8 @@
             }
         });
         
-        confirmedOnlyCheckbox.addEventListener('change', () => {
-            state.confirmedOnly = confirmedOnlyCheckbox.checked;
+        statusFilter.addEventListener('change', () => {
+            state.filterStatus = statusFilter.value;
             state.currentPage = 1;
             // If we have tags loaded, use client-side filtering, otherwise fetch from server
             if (state.allTags.length > 0) {
