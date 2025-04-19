@@ -20,75 +20,28 @@ CSV_CLEAN_JSON = '../print_history_csv_clean.json'
 DB_PATH = '../plant_tags.db'
 LABELS_DIR = '../static/labels/generated_labels'
 
+# Path to default template file
+DEFAULT_TEMPLATE_FILE = '../static/label-templates/label_template_default.json'
+
 # Paths for utility scripts
 REPAIR_LOGS_SCRIPT = './repair-logs.py'
 
-# Default template to use only when absolutely necessary
-DEFAULT_TEMPLATE = {
-    "name": "label_template_default.json",
-    "base_image": "static/label-templates/label_base.png",
-    "offsets": [50, -20],
-    "fields": [
-        {
-            "x": 170, 
-            "y": 40, 
-            "name": "main_text",
-            "data": {
-                "type": "text",
-                "text": "MAIN_TEXT",
-                "style": {
-                    "font-base": "arial.ttf",
-                    "size": 72,
-                    "bold": True,
-                    "italic": False,
-                    "spacing": 5
-                }
-            }
-        },
-        {
-            "x": 170,
-            "y": 128,
-            "name": "midtext",
-            "data": {
-                "type": "text",
-                "text": "midtext",
-                "style": {
-                    "font-base": "arial.ttf",
-                    "size": 56,
-                    "bold": False,
-                    "italic": True,
-                    "spacing": 1
-                }
-            }
-        },
-        {
-            "x": 170,
-            "y": 200,
-            "name": "subtext",
-            "data": {
-                "type": "text",
-                "text": "SUBTEXT",
-                "style": {
-                    "font-base": "arial.ttf",
-                    "size": 56,
-                    "bold": False,
-                    "italic": False,
-                    "spacing": 1
-                }
-            }
-        }
-    ]
-}
+def load_default_template():
+    """Load the default template from file - fail if not found"""
+    if not os.path.exists(DEFAULT_TEMPLATE_FILE):
+        raise FileNotFoundError(f"Default template file {DEFAULT_TEMPLATE_FILE} not found")
+        
+    with open(DEFAULT_TEMPLATE_FILE, 'r', encoding='utf-8') as f:
+        return json.load(f)
 
-def create_content_hash(formdata: Dict[str, str], template_name: str) -> str:
+def create_content_hash(formdata: Dict[str, str]) -> str:
     """
-    Create a content hash based on formdata and template name
-    This is used to identify unique tags by their content, ignoring offsets
+    Create a content hash based only on formdata
+    This is used to identify unique tags by their content, ignoring template and offsets
     """
-    content = {
-        "formdata": formdata,
-        "template_name": template_name
-    }
+    # Only use formdata for hash generation
+    content = {"formdata": formdata}
+    
     content_str = json.dumps(content, sort_keys=True)
     return hashlib.md5(content_str.encode('utf-8')).hexdigest()
 
@@ -188,14 +141,12 @@ def get_print_log_entries():
     for log in print_logs:
         # Extract data for hash generation
         formdata = log.get("formdata", {})
-        template = log.get("label_template", {})
-        template_name = template.get("name", "unknown")
         
         # Skip entries without valid formdata
         if not formdata:
             continue
             
-        content_hash = create_content_hash(formdata, template_name)
+        content_hash = create_content_hash(formdata)
         
         if content_hash not in print_logs_by_hash:
             print_logs_by_hash[content_hash] = []
@@ -387,12 +338,11 @@ def migrate_saved_labels(cursor, existing_hashes, print_logs_by_hash):
         # Get the necessary data, preserving all metadata
         formdata = label_data.get("formdata", {})
         template = label_data.get("label_template", {})
-        template_name = template.get("name", "unknown")
         image_path = label_data.get("filepath", "")
         created_date = label_data.get("date_created", datetime.now().isoformat())
         
         # Generate content hash
-        content_hash = create_content_hash(formdata, template_name)
+        content_hash = create_content_hash(formdata)
         
         # Check if this tag already exists in the database
         tag_id = None
@@ -537,12 +487,11 @@ def migrate_plantlist(cursor, existing_hashes):
         
         # Since plantlist entries don't have template info, we need to infer
         # based on categories like "pepper", "tomato", etc. in the main_text
-        # For now, use default template - in a real solution, you'd do more analysis here
-        template = DEFAULT_TEMPLATE
-        template_name = template.get("name", "unknown")
+        # For now, use default template
+        template = load_default_template()
         
         # Generate content hash to check for duplicates
-        content_hash = create_content_hash(formdata, template_name)
+        content_hash = create_content_hash(formdata)
         
         # Skip if this tag already exists
         if content_hash in existing_hashes:
@@ -614,11 +563,10 @@ def migrate_csv_entries(cursor, existing_hashes):
         image_date = record.get("image_date", datetime.now().isoformat())
         
         # Use default template since CSV entries don't have template info
-        template = DEFAULT_TEMPLATE
-        template_name = template.get("name", "unknown")
+        template = load_default_template()
         
         # Generate content hash
-        content_hash = create_content_hash(formdata, template_name)
+        content_hash = create_content_hash(formdata)
         
         # Skip if already processed
         if content_hash in existing_hashes:
@@ -727,7 +675,7 @@ def migrate_all():
     print("Starting comprehensive database migration...")
     
     # First, run repair-logs.py to ensure plantlist.json is up to date
-    run_repair_logs()
+    #run_repair_logs()
     
     # Next, ensure the database exists
     conn, cursor = ensure_db_exists()
@@ -735,11 +683,6 @@ def migrate_all():
     # Get existing hashes from database
     existing_hashes = get_existing_content_hashes()
     print(f"Found {len(existing_hashes)} existing records in database")
-    
-    # Load print logs
-    global print_logs
-    with open(PRINT_LOG_FILE, 'r', encoding='utf-8') as f:
-        print_logs = json.load(f)
     
     # Get print logs organized by content hash
     print_logs_by_hash = get_print_log_entries()
