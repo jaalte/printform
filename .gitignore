@@ -7,3 +7,4 @@ plantlist.json
 __pycache__
 node_modules
 print-log-old-*.json
+plant_tags.db

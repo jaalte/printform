@@ -676,11 +676,13 @@ class PlantTagDatabase:
         migrated_count = 0
         for label_data in saved_labels:
             # Create PlantTag from saved label
+            # Tags in saved labels are automatically confirmed
             tag = PlantTag(
                 formdata=label_data.get("formdata", {}),
                 template=label_data.get("label_template", {}),
                 image_path=label_data.get("filepath"),
-                created_date=label_data.get("date_created") or datetime.now().isoformat()
+                created_date=label_data.get("date_created") or datetime.now().isoformat(),
+                confirmed=True  # Confirmed because it's in saved labels
             )
             
             # Look for matching print logs
@@ -695,17 +697,95 @@ class PlantTagDatabase:
                     )
                     
                     if tag == log_tag:
-                        # Add print record
-                        tag.add_print_record(
-                            copies=log.get("count", 1),
-                            print_date=log.get("time")
-                        )
+                        # Add print record (but don't change confirmation status here)
+                        copies = log.get("count", 1)
+                        if log.get("time"):
+                            tag.print_history.append({
+                                "copies": copies,
+                                "date": log.get("time"),
+                                "unix_time": int(datetime.fromisoformat(log.get("time")).timestamp())
+                            })
             
-            # Mark as confirmed if printed multiple times
-            if tag.get_total_prints() > 1:
-                tag.confirmed = True
-                
             # Save to database
+            self.save_tag(tag)
+            migrated_count += 1
+            
+        # Process print logs for tags that weren't in saved labels
+        processed_content_hashes = {tag.create_content_hash() for tag in [PlantTag(
+            formdata=label.get("formdata", {}),
+            template=label.get("label_template", {})
+        ) for label in saved_labels]}
+        
+        # Group logs by their content hash
+        content_hash_to_logs = {}
+        for log in print_logs:
+            temp_tag = PlantTag(
+                formdata=log.get("formdata", {}),
+                template=log.get("label_template", {})
+            )
+            content_hash = temp_tag.create_content_hash()
+            
+            if content_hash in processed_content_hashes:
+                # Skip logs that were already processed with saved labels
+                continue
+                
+            if content_hash not in content_hash_to_logs:
+                content_hash_to_logs[content_hash] = []
+            content_hash_to_logs[content_hash].append(log)
+        
+        # Create tags for print logs not in saved labels
+        for content_hash, logs in content_hash_to_logs.items():
+            if not logs:
+                continue
+                
+            # Use the first log as the base for this tag
+            base_log = logs[0]
+            tag = PlantTag(
+                formdata=base_log.get("formdata", {}),
+                template=base_log.get("label_template", {}),
+                offset_adjustment=base_log.get("offset_adjustment", (0, 0)),
+                created_date=base_log.get("time") or datetime.now().isoformat()
+            )
+            
+            # Set confirmed to false initially
+            tag.confirmed = False
+            
+            # Add all print records and check for confirmation criteria
+            for log in logs:
+                copies = log.get("count", 1)
+                # Check if any print job had multiple copies (criteria for confirmation)
+                if copies > 1:
+                    tag.confirmed = True
+                
+                if log.get("time"):
+                    tag.print_history.append({
+                        "copies": copies,
+                        "date": log.get("time"),
+                        "unix_time": int(datetime.fromisoformat(log.get("time")).timestamp())
+                    })
+            
+            # Find the most recent log with a preview path
+            # Sort logs by time (newest first)
+            sorted_logs = sorted(
+                [log for log in logs if log.get("time") and log.get("preview_path")],
+                key=lambda x: datetime.fromisoformat(x.get("time")).timestamp(),
+                reverse=True
+            )
+            
+            # Try to save the image from the most recent log with a preview
+            if sorted_logs:
+                latest_log = sorted_logs[0]
+                preview_path = latest_log.get("preview_path")
+                abs_preview_path = os.path.join(os.getcwd(), preview_path.lstrip('/'))
+                
+                # Only save the image if it exists
+                if os.path.exists(abs_preview_path):
+                    try:
+                        tag.save_image(abs_preview_path)
+                    except Exception as e:
+                        print(f"Warning: Could not save image for tag from print log: {e}")
+            
+            # Save this tag
             self.save_tag(tag)
             migrated_count += 1
         
