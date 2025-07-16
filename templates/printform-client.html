@@ -4,6 +4,124 @@
     <title>Plant Tag Printer</title>
     <link rel="stylesheet" href="/static/printform-client.css">
     <style>
+        /* Main layout */
+        .main-container {
+            display: flex;
+            gap: 20px;
+            max-width: 100%;
+            margin: 0 auto;
+            padding: 20px;
+            height: 100vh;
+            box-sizing: border-box;
+        }
+        
+        .left-panel {
+            flex: 1;
+            min-width: 0;
+        }
+        
+        .right-panel {
+            flex: 1;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            padding-left: 100px;
+        }
+        
+        /* Responsive design */
+        @media (max-width: 1200px) {
+            .main-container {
+                flex-direction: column;
+                height: auto;
+            }
+            
+            .right-panel {
+                order: 1; /* Search appears below on smaller screens */
+            }
+        }
+        
+        /* Section headers */
+        .section-header {
+            font-weight: bold;
+            margin-bottom: 15px;
+            color: #333;
+        }
+        
+        /* Search styles */
+        .search-container {
+            margin-bottom: 20px;
+        }
+        
+        .search-input {
+            width: 100%;
+            padding: 8px 12px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+            font-size: 14px;
+            box-sizing: border-box;
+        }
+        
+        .search-input:focus {
+            outline: none;
+            border-color: #3498db;
+        }
+        
+        .search-results {
+            flex: 1;
+            overflow-y: auto;
+        }
+        
+        .search-result {
+            display: flex;
+            align-items: center;
+            margin-bottom: 4px;
+            background: white;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+        }
+        
+        .result-image {
+            height: 120px;
+            width: auto;
+            object-fit: contain;
+            background: white;
+        }
+        
+        .result-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            padding: 8px;
+            min-width: 80px;
+        }
+        
+        .print-btn {
+            padding: 6px 8px;
+            border: 1px solid #3498db;
+            background: #3498db;
+            color: white;
+            border-radius: 3px;
+            cursor: pointer;
+            font-size: 12px;
+        }
+        
+        .print-btn:hover {
+            background: #2980b9;
+        }
+        
+        .no-results {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 40px 20px;
+            font-style: italic;
+        }
+        
+        .search-loading {
+            text-align: center;
+            color: #7f8c8d;
+            padding: 20px;
+        }
+        
         /* Right sidebar styles */
         .sidebar {
             position: fixed;
@@ -36,74 +154,84 @@
     </style>
 </head>
 <body>
-    <h1>Plant Tag Printer</h1>
-    
-    <!-- Right Sidebar -->
-    <div class="sidebar">
-        <a href="/tag-manager" class="sidebar-btn">Tag Manager</a>
-        <button id="migrate-btn" class="sidebar-btn">Database Migration</button>
+    <div class="main-container">
+        <!-- Left Panel - Tag Editor -->
+        <div class="left-panel">
+            <div class="section-header">Create a tag</div>
+            
+            <!-- We put the template dropdown INSIDE the form so it's included in FormData() -->
+            <form id="label-form">
+                <!-- ### ADDED: Template selector at the top, so it's included in the same form. -->
+                <div class="input-group">
+                    <label for="template-select">Template:</label>
+                    <select id="template-select" name="template_name">
+                        <!-- Options get populated by JS -->
+                    </select>
+                </div>
+
+                <div class="form-container">
+                    <!-- Text Entry Section -->
+                    <div class="data-inputs-container">
+                        <strong>Text Entry</strong>
+                        <div class="input-group">
+                            <label for="main_text">Main Text:</label>
+                            <input type="text" id="main_text" name="main_text" class="debounced-field">
+                        </div>
+                        <div class="input-group">
+                            <label for="midtext">Cultivar:</label>
+                            <input type="text" id="midtext" name="midtext" class="debounced-field">
+                        </div>
+                        <div class="input-group">
+                            <label for="subtext">Subtext:</label>
+                            <input type="text" id="subtext" name="subtext" class="debounced-field">
+                        </div>
+                    </div>
+
+                    <!-- Offsets Section (Positioned to the right of inputs) -->
+                    <div class="offset-controls">
+                        <strong>Offsets</strong>
+                        <!-- STEP=7 ON X-OFFSET -->
+                        <div class="input-group">
+                            <label for="x-offset">X:</label>
+                            <input type="number" id="x-offset" name="x-offset" class="debounced-field" value="0" step="7">
+                            <button type="button" id="x-offset-down" class="offset-btn">←</button>
+                            <button type="button" id="x-offset-up" class="offset-btn">→</button>
+                        </div>
+                        <!-- STEP=1 ON Y-OFFSET -->
+                        <div class="input-group">
+                            <label for="y-offset">Y:</label>
+                            <input type="number" id="y-offset" name="y-offset" class="debounced-field" value="0" step="1">
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Label Preview Image -->
+                <img id="label-image" src="" alt="Label Preview">
+
+                <!-- Print & Save Controls -->
+                <div id="print-controls">
+                    <label for="print-count">Print Count:</label>
+                    <!-- STEP=1 FOR PRINT COUNT -->
+                    <input type="number" id="print-count" name="print-count" value="1" min="0" step="1">
+
+                    <button type="button" id="print-one-btn">Print One</button>
+                    <button type="button" id="print-batch-btn">Print Batch</button>
+                    <button type="button" id="save-label-btn">Save Label</button>
+                </div>
+            </form>
+        </div>
+        
+        <!-- Right Panel - Tag Search -->
+        <div class="right-panel">
+            <div class="section-header">Search tags</div>
+            <div class="search-container">
+                <input type="text" id="search-input" class="search-input" placeholder="Search tags..." autocomplete="off">
+            </div>
+            <div id="search-results" class="search-results">
+                <div class="no-results">Enter a search term to find tags...</div>
+            </div>
+        </div>
     </div>
-    
-    <!-- We put the template dropdown INSIDE the form so it's included in FormData() -->
-    <form id="label-form">
-        <!-- ### ADDED: Template selector at the top, so it's included in the same form. -->
-        <div class="input-group">
-            <label for="template-select">Template:</label>
-            <select id="template-select" name="template_name">
-                <!-- Options get populated by JS -->
-            </select>
-        </div>
-
-        <div class="form-container">
-            <!-- Text Entry Section -->
-            <div class="data-inputs-container">
-                <strong>Text Entry</strong>
-                <div class="input-group">
-                    <label for="main_text">Main Text:</label>
-                    <input type="text" id="main_text" name="main_text" class="debounced-field">
-                </div>
-                <div class="input-group">
-                    <label for="midtext">Cultivar:</label>
-                    <input type="text" id="midtext" name="midtext" class="debounced-field">
-                </div>
-                <div class="input-group">
-                    <label for="subtext">Subtext:</label>
-                    <input type="text" id="subtext" name="subtext" class="debounced-field">
-                </div>
-            </div>
-
-            <!-- Offsets Section (Positioned to the right of inputs) -->
-            <div class="offset-controls">
-                <strong>Offsets</strong>
-                <!-- STEP=7 ON X-OFFSET -->
-                <div class="input-group">
-                    <label for="x-offset">X:</label>
-                    <input type="number" id="x-offset" name="x-offset" class="debounced-field" value="0" step="7">
-                    <button type="button" id="x-offset-down" class="offset-btn">←</button>
-                    <button type="button" id="x-offset-up" class="offset-btn">→</button>
-                </div>
-                <!-- STEP=1 ON Y-OFFSET -->
-                <div class="input-group">
-                    <label for="y-offset">Y:</label>
-                    <input type="number" id="y-offset" name="y-offset" class="debounced-field" value="0" step="1">
-                </div>
-            </div>
-        </div>
-
-        <!-- Label Preview Image -->
-        <img id="label-image" src="" alt="Label Preview">
-
-        <!-- Print & Save Controls -->
-        <div id="print-controls">
-            <label for="print-count">Print Count:</label>
-            <!-- STEP=1 FOR PRINT COUNT -->
-            <input type="number" id="print-count" name="print-count" value="1" min="0" step="1">
-
-            <button type="button" id="print-one-btn">Print One</button>
-            <button type="button" id="print-batch-btn">Print Batch</button>
-            <button type="button" id="save-label-btn">Save Label</button>
-        </div>
-    </form>
 
     <!-- Toast Message -->
     <div id="toast-message"></div>
@@ -119,6 +247,10 @@
     // Debounce logic
     let debounceTimer = null;
     const DEBOUNCE_DELAY = 200;
+    
+    // Search debounce timer
+    let searchDebounceTimer = null;
+    const SEARCH_DEBOUNCE_DELAY = 300;
 
     function showToast(msg) {
       const toastMessage = document.getElementById('toast-message');
@@ -129,6 +261,103 @@
       }, 3000);
     }
 
+    // Tag Search functionality
+    function performSearch(query) {
+        const resultsContainer = document.getElementById('search-results');
+        
+        if (!query.trim()) {
+            resultsContainer.innerHTML = '<div class="no-results">Enter a search term to find tags...</div>';
+            return;
+        }
+        
+        resultsContainer.innerHTML = '<div class="search-loading">Searching...</div>';
+        
+        fetch(`/search_labels?q=${encodeURIComponent(query)}`)
+            .then(response => response.json())
+            .then(data => {
+                if (data.results.length === 0) {
+                    resultsContainer.innerHTML = '<div class="no-results">No tags found matching your search.</div>';
+                    return;
+                }
+                
+                const resultsHtml = data.results.map(result => {
+                    const tooltip = `${result.filename}\nMatch: ${Math.round(result.similarity * 100)}%`;
+                    return `
+                        <div class="search-result" title="${tooltip}">
+                            <img src="${result.full_path}" alt="${result.plant_name}" class="result-image">
+                            <div class="result-actions">
+                                <button class="print-btn" onclick="printBatch('${result.filename}')">Print Batch</button>
+                                <button class="print-btn" onclick="printOne('${result.filename}')">Print One</button>
+                            </div>
+                        </div>
+                    `;
+                }).join('');
+                
+                resultsContainer.innerHTML = resultsHtml;
+            })
+            .catch(error => {
+                console.error('Search error:', error);
+                resultsContainer.innerHTML = '<div class="no-results">Error searching tags. Please try again.</div>';
+            });
+    }
+    
+    function debouncedSearch(query) {
+        if (searchDebounceTimer) {
+            clearTimeout(searchDebounceTimer);
+        }
+        searchDebounceTimer = setTimeout(() => performSearch(query), SEARCH_DEBOUNCE_DELAY);
+    }
+    
+    function printOne(filename) {
+        fetch('/print_existing_label', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ filename: filename, count: 1 })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                showToast(`Error: ${data.error}`);
+            } else {
+                showToast('Printed one label.');
+            }
+        })
+        .catch(err => {
+            console.error('Print error:', err);
+            showToast('Error printing label.');
+        });
+    }
+    
+    function printBatch(filename) {
+        const count = prompt('How many copies to print?', '1');
+        if (count === null || count === '') return;
+        
+        const numCount = parseInt(count);
+        if (isNaN(numCount) || numCount <= 0) {
+            showToast('Please enter a valid number.');
+            return;
+        }
+        
+        fetch('/print_existing_label', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({ filename: filename, count: numCount })
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.error) {
+                showToast(`Error: ${data.error}`);
+            } else {
+                showToast(`Printed ${numCount} labels.`);
+            }
+        })
+        .catch(err => {
+            console.error('Print error:', err);
+            showToast('Error printing labels.');
+        });
+    }
+
+    // Tag Editor functionality
     function updatePreview() {
       const labelForm = document.getElementById('label-form');
       const labelImage = document.getElementById('label-image');
@@ -217,6 +446,11 @@
         updatePreview();
       })
       .catch(err => console.error('Error loading templates:', err));
+
+    // Search input handler
+    document.getElementById('search-input').addEventListener('input', (e) => {
+        debouncedSearch(e.target.value);
+    });
 
     // Re-generate preview AND update labels when the user changes the template
     templateSelect.addEventListener('change', () => {
@@ -409,3 +643,4 @@
     </script>
 </body>
 </html>
+

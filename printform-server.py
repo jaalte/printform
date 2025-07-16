@@ -12,6 +12,7 @@ import win32ui
 from datetime import datetime
 from tag_routes import register_tag_routes
 from plant_tag import PlantTagDatabase
+from difflib import SequenceMatcher
 
 ###############################################################################
 # CONFIG / PATHS
@@ -19,7 +20,7 @@ from plant_tag import PlantTagDatabase
 app = Flask(__name__)
 
 # Adjust printer name to match your Windows printer
-PRINTER_NAME = "TEC B-SX5T (305 dpi)"
+PRINTER_NAME = "Taglord (TEC B-SX5T) (305 dpi)"
 
 # Single preview folder and file naming for each session
 PREVIEW_FOLDER = 'static/preview_images'
@@ -433,6 +434,95 @@ def download_image(filename):
 def serve_preview_images(filename):
     return send_from_directory(PREVIEW_FOLDER, filename)
 
+@app.route('/search_labels', methods=['GET'])
+def search_labels():
+    """
+    Search for labels in the generated_labels directory.
+    Supports fuzzy search on filenames with word-level and sub-word matching.
+    """
+    query = request.args.get('q', '').lower().strip()
+    
+    if not query:
+        return jsonify({'results': []})
+    
+    labels_dir = os.path.join(app.root_path, 'static/labels/generated_labels')
+    results = []
+    
+    if not os.path.exists(labels_dir):
+        return jsonify({'results': []})
+    
+    # Split query into individual search terms
+    query_terms = [term.strip() for term in query.split() if term.strip()]
+    
+    # Get all PNG files in the directory
+    for filename in os.listdir(labels_dir):
+        if filename.endswith('.png') and filename.startswith('label_'):
+            # Remove 'label_' prefix and '.png' suffix for search
+            searchable_name = filename[6:-4].lower()
+            
+            # Extract plant info from filename
+            # Format: label_plant-name_cultivar_description_date.png
+            parts = searchable_name.split('_')
+            
+            # Create a list of all words in the filename (excluding date)
+            filename_words = []
+            for i, part in enumerate(parts[:-1]):  # Exclude the date part
+                # Split each part by hyphens to get individual words
+                filename_words.extend(part.split('-'))
+            
+            # Check if all query terms match somewhere in the filename
+            all_terms_match = True
+            best_similarity = 0.0
+            
+            for query_term in query_terms:
+                term_matched = False
+                term_best_similarity = 0.0
+                
+                # Check each word in the filename for a match
+                for word in filename_words:
+                    # Check for exact substring match within the word
+                    if query_term in word:
+                        term_matched = True
+                        term_best_similarity = max(term_best_similarity, 0.8)  # High score for substring match
+                        break
+                
+                if not term_matched:
+                    all_terms_match = False
+                    break
+                
+                best_similarity = max(best_similarity, term_best_similarity)
+            
+            # If all terms matched, calculate overall similarity for scoring
+            if all_terms_match:
+                # Calculate fuzzy similarity for ranking purposes only
+                overall_similarity = SequenceMatcher(None, query, searchable_name).ratio()
+                best_similarity = max(best_similarity, overall_similarity)
+            
+            # If all terms matched, include this result
+            if all_terms_match:
+                # Get file modification time
+                file_path = os.path.join(labels_dir, filename)
+                mod_time = os.path.getmtime(file_path)
+                
+                plant_info = {
+                    'filename': filename,
+                    'full_path': f'/static/labels/generated_labels/{filename}',
+                    'similarity': best_similarity,
+                    'mod_time': mod_time,
+                    'plant_name': parts[0] if len(parts) > 0 else '',
+                    'cultivar': parts[1] if len(parts) > 1 else '',
+                    'description': '_'.join(parts[2:-1]) if len(parts) > 2 else '',
+                    'date': parts[-1] if len(parts) > 0 else ''
+                }
+                
+                results.append(plant_info)
+    
+    # Sort by modification time (newest first)
+    # Ties broken by similarity score (highest first)
+    results.sort(key=lambda x: (x['similarity'], x['mod_time']), reverse=True)
+    
+    return jsonify({'results': results})
+
 @app.route('/migrate-data')
 def migrate_data():
     """
@@ -472,6 +562,39 @@ def migrate_data():
             "success": False,
             "error": f"Migration failed: {str(e)}"
         }), 500
+
+@app.route('/print_existing_label', methods=['POST'])
+def print_existing_label():
+    """
+    Print an existing saved label by filename.
+    """
+    data = request.get_json()
+    filename = data.get('filename')
+    count = data.get('count', 1)
+    
+    if not filename:
+        return jsonify({'error': 'No filename provided'}), 400
+    
+    # Validate filename to prevent directory traversal
+    if not filename.startswith('label_') or not filename.endswith('.png'):
+        return jsonify({'error': 'Invalid filename'}), 400
+    
+    # Construct full path to the label
+    label_path = os.path.join(app.root_path, 'static/labels/generated_labels', filename)
+    
+    if not os.path.exists(label_path):
+        return jsonify({'error': 'Label file not found'}), 404
+    
+    try:
+        # Print the existing label
+        print_label_file(label_path, count)
+        
+        # Log the print job
+        append_to_print_log(f"existing_{filename}", count)
+        
+        return jsonify({'success': True, 'message': f'Printed {count} copies of {filename}'})
+    except Exception as e:
+        return jsonify({'error': str(e)}), 500
 
 if __name__ == '__main__':
     main()

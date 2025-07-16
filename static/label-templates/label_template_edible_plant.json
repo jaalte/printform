@@ -49,7 +49,7 @@
                     "font-base": "arial.ttf",
                     "size": 56,
                     "bold": false,
-                    "italic": false,
+                    "italic": true,
                     "spacing": 1
                 }
             }
