@@ -240,10 +240,12 @@ class PlantTagDatabase:
             db_path: Path to SQLite database file
         """
         self.db_path = db_path or PlantTag.DB_PATH
+        self.backup_db_path = "print_log_backup.db"
         self._ensure_db_exists()
     
     def _ensure_db_exists(self):
         """Create the database and tables if they don't exist."""
+        # Ensure main database exists
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
@@ -272,6 +274,23 @@ class PlantTagDatabase:
                 print_date TEXT NOT NULL,
                 unix_time INTEGER NOT NULL,
                 FOREIGN KEY (tag_id) REFERENCES plant_tags (tag_id)
+            )
+            ''')
+            
+            conn.commit()
+        
+        # Ensure backup database exists with same schema
+        with sqlite3.connect(self.backup_db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Create the print_history table in backup
+            cursor.execute('''
+            CREATE TABLE IF NOT EXISTS print_history (
+                print_id INTEGER PRIMARY KEY AUTOINCREMENT,
+                tag_id INTEGER NOT NULL,
+                copies INTEGER NOT NULL,
+                print_date TEXT NOT NULL,
+                unix_time INTEGER NOT NULL
             )
             ''')
             
@@ -343,7 +362,7 @@ class PlantTagDatabase:
     
     def add_print_record(self, tag_id: int, copies: int, print_date: Optional[str] = None) -> bool:
         """
-        Add a print record for a tag.
+        Add a print record for a tag to both main and backup databases.
         
         Args:
             tag_id: The tag's database ID
@@ -358,6 +377,7 @@ class PlantTagDatabase:
             
         unix_time = int(datetime.fromisoformat(print_date).timestamp())
         
+        # Add to main database
         with sqlite3.connect(self.db_path) as conn:
             cursor = conn.cursor()
             
@@ -376,7 +396,21 @@ class PlantTagDatabase:
                 )
             
             conn.commit()
-            return True
+        
+        # Add to backup database
+        with sqlite3.connect(self.backup_db_path) as conn:
+            cursor = conn.cursor()
+            
+            # Add print record to backup
+            cursor.execute('''
+            INSERT INTO print_history (
+                tag_id, copies, print_date, unix_time
+            ) VALUES (?, ?, ?, ?)
+            ''', (tag_id, copies, print_date, unix_time))
+            
+            conn.commit()
+            
+        return True
     
     def get_tag_by_id(self, tag_id: int) -> Optional[PlantTag]:
         """

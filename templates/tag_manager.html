@@ -529,34 +529,40 @@
         
         // Print a tag
         function printTag(tagId) {
-            if (confirm('Print this tag?')) {
-                registerUserActivity();
-                fetch('/api/tags/' + tagId + '/print', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ copies: 1 })
-                })
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error(`HTTP error ${response.status}`);
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    if (data.error) {
-                        throw new Error(data.error);
-                    }
-                    alert(data.message);
-                    loadTags(true); // Force refresh after printing to get latest data
-                    loadStats(); // Reload stats
-                })
-                .catch(error => {
-                    console.error('Error printing tag:', error);
-                    alert(`Error printing tag: ${error.message || 'Print operation failed'}`);
-                });
+            const copies = prompt("Print how many?", "1");
+            if (copies === null) return; // User clicked Cancel
+            
+            const numCopies = parseInt(copies);
+            if (isNaN(numCopies) || numCopies < 1) {
+                alert("Please enter a valid number of copies (1 or more)");
+                return;
             }
+            
+            registerUserActivity();
+            fetch('/api/tags/' + tagId + '/print', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                },
+                body: JSON.stringify({ copies: numCopies })
+            })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error(`HTTP error ${response.status}`);
+                }
+                return response.json();
+            })
+            .then(data => {
+                if (data.error) {
+                    throw new Error(data.error);
+                }
+                loadTags(true); // Force refresh after printing to get latest data
+                loadStats(); // Reload stats
+            })
+            .catch(error => {
+                console.error('Error printing tag:', error);
+                alert(`Error printing tag: ${error.message || 'Print operation failed'}`);
+            });
         }
         
         // Event Listeners
