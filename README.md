@@ -4,22 +4,115 @@
 
 The PlantTag Management System is an extension to the PrintForm server that provides a robust solution for tracking, managing, and searching plant tags. It introduces a structured database approach with SQLite, a class-based architecture, and a modern web interface for tag management.
 
+**NEW: Auto-Restart System** - The server now includes an intelligent auto-restart system that prevents the search bugs that occur when the server runs for extended periods. The system includes graceful restart handling and a manual restart button in the client interface.
+
 ## Table of Contents
 
 1. [System Architecture](#system-architecture)
-2. [Database Structure](#database-structure)
-3. [Core Components](#core-components)
+2. [Auto-Restart System](#auto-restart-system)
+3. [Database Structure](#database-structure)
+4. [Core Components](#core-components)
    - [PlantTag Class](#planttag-class)
    - [PlantTagDatabase Class](#planttagdatabase-class)
    - [Helper Functions](#helper-functions)
-4. [URL Routes & API Endpoints](#url-routes--api-endpoints)
-5. [Tag Manager Web Interface](#tag-manager-web-interface)
-6. [Data Migration](#data-migration)
-7. [Integration with Existing Code](#integration-with-existing-code)
-8. [Installation Guide](#installation-guide)
-9. [Usage Guide](#usage-guide)
-10. [Technical Implementation Details](#technical-implementation-details)
-11. [Troubleshooting](#troubleshooting)
+5. [URL Routes & API Endpoints](#url-routes--api-endpoints)
+6. [Tag Manager Web Interface](#tag-manager-web-interface)
+7. [Data Migration](#data-migration)
+8. [Integration with Existing Code](#integration-with-existing-code)
+9. [Installation Guide](#installation-guide)
+10. [Usage Guide](#usage-guide)
+11. [Technical Implementation Details](#technical-implementation-details)
+12. [Troubleshooting](#troubleshooting)
+
+## Auto-Restart System
+
+### Overview
+
+The auto-restart system addresses search inconsistencies that occur when the server runs for extended periods. It automatically restarts the server every 5 minutes while ensuring critical operations (like saving tags and writing logs) complete safely.
+
+### Key Features
+
+- **Automatic Restart**: Server restarts every 5 minutes to prevent search bugs
+- **Graceful Handling**: Uses lock system to prevent restarts during critical operations
+- **Manual Restart Button**: Client interface includes a restart button in the top-right corner
+- **Operation Tracking**: Shows what operation is currently running when restart is blocked
+- **Force Restart Option**: Allows restart even when busy (with user confirmation)
+
+### How It Works
+
+#### Lock System
+The system uses a threading lock to prevent restarts during critical operations:
+
+```python
+# Global lock to prevent restart during critical operations
+restart_lock = threading.Lock()
+current_operation = None
+restart_timer = None
+restart_interval = 300  # 5 minutes in seconds
+```
+
+#### Critical Operations Protected
+- **Saving Labels**: When writing to `saved-label-index.json`
+- **Writing Print Logs**: When writing to `print-log.json`
+- **Database Operations**: When adding print records to the database
+
+#### Auto-Restart Timer
+The server automatically schedules restarts:
+
+```python
+def schedule_restart():
+    """Schedule the next auto-restart."""
+    global restart_timer
+    if restart_timer:
+        restart_timer.cancel()
+    restart_timer = threading.Timer(restart_interval, perform_restart)
+    restart_timer.daemon = True
+    restart_timer.start()
+```
+
+#### Manual Restart
+The client interface includes a restart button that:
+- Appears in the top-right corner of the interface
+- Provides immediate restart capability
+- Shows lock status with user-friendly messages
+- Allows force restart when server is busy
+
+### Client Interface Integration
+
+The restart button is positioned in the top-right corner for easy access:
+
+```html
+<div class="restart-server-container">
+  <div class="restart-server-tab" id="restart-server-btn">
+    🔄 Restart Server
+  </div>
+</div>
+```
+
+### Lock Messages
+
+When the server is busy, users see descriptive messages like:
+- "The server is waiting for action 'saving label to index' to complete. Restart anyways?"
+- "The server is waiting for action 'writing print log' to complete. Restart anyways?"
+
+### Configuration
+
+The restart interval can be adjusted by modifying:
+
+```python
+restart_interval = 300  # 5 minutes in seconds
+```
+
+### Signal Handling
+
+The system handles restart signals gracefully:
+
+```python
+def signal_handler(signum, frame):
+    """Handle restart signals gracefully."""
+    print(f"[{datetime.now().isoformat()}] Received restart signal, shutting down gracefully...")
+    sys.exit(0)
+```
 
 ## System Architecture
 
@@ -429,6 +522,26 @@ This ensures images are organized logically while preventing collisions.
 
 ## Troubleshooting
 
+### Auto-Restart System Issues
+
+If you encounter issues with the auto-restart system:
+
+1. **Server Not Restarting**: Check the console output for restart messages. The server should log restart attempts every 5 minutes.
+
+2. **Restart Button Not Working**: 
+   - Check browser console for JavaScript errors
+   - Verify the server is running and accessible
+   - Try refreshing the page
+
+3. **Server Stuck in Lock**: If the server appears to be stuck:
+   - Check console for lock messages
+   - Wait for the current operation to complete
+   - Use the force restart option if necessary
+
+4. **Search Still Hanging**: If search issues persist despite auto-restart:
+   - The auto-restart should prevent this, but if it occurs, use the manual restart button
+   - Check if the restart interval needs adjustment (currently 5 minutes)
+
 ### Database Issues
 
 If you encounter database problems:
@@ -442,10 +555,19 @@ If search doesn't work properly:
 1. Check the browser console for JavaScript errors
 2. Try refreshing the page to reload all data
 3. Clear your browser cache if old JavaScript is cached
+4. **NEW**: Use the restart button if search hangs - this is the primary fix for search issues
 
 ### Print Errors
 
 If printing fails:
 1. Check that the printer is connected and available
 2. Verify that the image path exists on the server
-3. Look for detailed error messages in the alert dialog 
+3. Look for detailed error messages in the alert dialog
+
+### Auto-Restart Configuration
+
+To adjust the auto-restart behavior:
+
+1. **Change Restart Interval**: Modify `restart_interval = 300` in `printform-server.py` (value in seconds)
+2. **Disable Auto-Restart**: Comment out the `schedule_restart()` call in the `main()` function
+3. **Adjust Lock Timeout**: Modify the timeout values in `perform_restart()` and `restart_server()` functions 

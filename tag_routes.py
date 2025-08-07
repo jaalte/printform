@@ -140,8 +140,29 @@ def register_tag_routes(app):
             if not tag:
                 return jsonify({"error": f"Tag with ID {tag_id} not found"}), 404
                 
-            # Add print record
-            db.add_print_record(tag_id, copies)
+            # Add print record (this is a critical operation that needs lock protection)
+            # Import the restart lock from the main server
+            try:
+                import importlib.util
+                spec = importlib.util.spec_from_file_location("printform_server", 
+                                                             os.path.join(os.getcwd(), "printform-server.py"))
+                printform_server = importlib.util.module_from_spec(spec)
+                spec.loader.exec_module(printform_server)
+                
+                # Acquire restart lock to prevent restart during database write
+                # This ensures the database operation completes before any restart
+                if not printform_server.acquire_restart_lock("adding print record to database"):
+                    print("Warning: Could not acquire restart lock for print record operation")
+                
+                try:
+                    db.add_print_record(tag_id, copies)
+                finally:
+                    # Always release the lock, even if an exception occurs
+                    printform_server.release_restart_lock()
+            except Exception as e:
+                print(f"Error with restart lock: {e}")
+                # Fallback to normal operation
+                db.add_print_record(tag_id, copies)
             
             # Get updated tag
             tag = db.get_tag_by_id(tag_id)
@@ -149,13 +170,6 @@ def register_tag_routes(app):
             # Perform the actual printing
             if tag.image_path:
                 try:
-                    # Import the main module - this avoids the hyphen issue in module names
-                    import importlib.util
-                    spec = importlib.util.spec_from_file_location("printform_server", 
-                                                                 os.path.join(os.getcwd(), "printform-server.py"))
-                    printform_server = importlib.util.module_from_spec(spec)
-                    spec.loader.exec_module(printform_server)
-                    
                     # Now use the print_label_file function
                     # Convert relative path to absolute
                     abs_path = os.path.join(os.getcwd(), tag.image_path.lstrip('/'))

@@ -5,6 +5,13 @@
     <link rel="stylesheet" href="/static/printform-client.css">
     <style>
         /* Main layout */
+        body {
+            margin: 0;
+            padding: 0;
+            height: 100vh;
+            overflow: hidden;
+        }
+        
         .main-container {
             display: flex;
             gap: 20px;
@@ -13,6 +20,7 @@
             padding: 20px;
             height: 100vh;
             box-sizing: border-box;
+            overflow: auto;
         }
         
         .left-panel {
@@ -103,6 +111,20 @@
             border-radius: 3px;
             cursor: pointer;
             font-size: 12px;
+        }
+
+        /* Restart server button styles */
+        .restart-server-container {
+            position: fixed;
+            bottom: 20px;
+            left: 20px;
+            z-index: 9999;
+            pointer-events: auto;
+        }
+        
+        .restart-server-tab {
+            padding: 6px 12px;
+            font-size: 14px;
         }
         
         .print-btn:hover {
@@ -234,7 +256,7 @@
     </div>
 
     <!-- Toast Message -->
-    <div id="toast-message"></div>
+    <div id="toast-message" style="display: none; position: fixed; top: 20px; right: 20px; padding: 10px; border: 1px solid #333; background-color: #eee; color: #000; z-index: 1001; border-radius: 4px;"></div>
 
     <script>
     // Store the entire templates dict from /get_templates
@@ -635,12 +657,81 @@
     });
     
     // Database migration button with confirmation
-    document.getElementById('migrate-btn').addEventListener('click', () => {
-      if (confirm('Are you sure you want to migrate data from JSON files to the database? This operation is typically only needed once.')) {
-        window.location.href = '/migrate-data';
+    const migrateBtn = document.getElementById('migrate-btn');
+    if (migrateBtn) {
+      migrateBtn.addEventListener('click', () => {
+        if (confirm('Are you sure you want to migrate data from JSON files to the database? This operation is typically only needed once.')) {
+          window.location.href = '/migrate-data';
+        }
+      });
+    }
+    // Restart server button functionality
+    // This provides manual restart capability to address search bugs that occur
+    // when the server runs for extended periods
+    document.addEventListener('DOMContentLoaded', () => {
+      const restartBtn = document.getElementById('restart-server-btn');
+      if (restartBtn) {
+        restartBtn.addEventListener('click', () => {
+          fetch('/restart-server', {
+            method: 'POST',
+            headers: {'Content-Type': 'application/json'},
+            body: JSON.stringify({})
+          })
+          .then(r => r.json())
+          .then(data => {
+            if (data.success) {
+              // Server restart was successful
+              showToast('Server restart in progress...');
+              // Wait a moment then reload the page to reconnect to the new server instance
+              setTimeout(() => {
+                window.location.reload();
+              }, 2000);
+            } else if (data.lock_text) {
+              // Server is busy with a critical operation
+              // Show user-friendly message with option to force restart
+              if (confirm(`The server is waiting for action '${data.lock_text}' to complete. Restart anyways? This is generally safe to do, but you may need to re-save the current tag afterwards.`)) {
+                // Force restart - ignore the lock
+                fetch('/restart-server', {
+                  method: 'POST',
+                  headers: {'Content-Type': 'application/json'},
+                  body: JSON.stringify({ force: true })
+                })
+                .then(r => r.json())
+                .then(data => {
+                  if (data.success) {
+                    showToast('Server restart successful. Refreshing...');
+                    setTimeout(() => {
+                      window.location.reload();
+                    }, 2000);
+                  } else {
+                    showToast(`Restart failed: ${data.message || data.error}`);
+                  }
+                })
+                .catch(err => {
+                  console.error('Restart error:', err);
+                  showToast('Restart failed - check console for details');
+                });
+              }
+            } else {
+              // Other error occurred
+              showToast(`Restart failed: ${data.message || data.error}`);
+            }
+          })
+          .catch(err => {
+            console.error('Restart error:', err);
+            showToast('Restart failed - check console for details');
+          });
+        });
       }
     });
     </script>
+
+    <!-- Restart server button - provides manual restart capability to address search bugs -->
+    <div class="restart-server-container">
+      <button class="restart-server-tab" id="restart-server-btn">
+        Restart Server
+      </button>
+    </div>
 </body>
 </html>
 

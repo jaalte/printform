@@ -10,9 +10,120 @@ import shutil
 import win32print
 import win32ui
 from datetime import datetime
+import threading
+import time
+import signal
+import sys
 from tag_routes import register_tag_routes
 from plant_tag import PlantTagDatabase
 from difflib import SequenceMatcher
+
+###############################################################################
+# AUTO-RESTART SYSTEM
+###############################################################################
+# This system addresses search inconsistencies that occur when the server runs
+# for extended periods. It automatically restarts the server every 5 minutes
+# while ensuring critical operations (like saving tags and writing logs) 
+# complete safely.
+#
+# Key components:
+# - restart_lock: Threading lock to prevent restarts during critical operations
+# - current_operation: Tracks what operation is currently running
+# - restart_timer: Timer that schedules the next auto-restart
+# - restart_interval: How often to restart (5 minutes = 300 seconds)
+###############################################################################
+
+# Global lock to prevent restart during critical operations
+restart_lock = threading.Lock()
+current_operation = None  # Tracks the current operation for user-friendly lock messages
+restart_timer = None      # Timer object for scheduling auto-restarts
+restart_interval = 300    # Auto restart every 5 minutes (300 seconds)
+
+def acquire_restart_lock(operation_name="Unknown operation"):
+    """
+    Acquire the restart lock to prevent auto-restart during critical operations.
+    
+    Args:
+        operation_name (str): Human-readable description of the current operation
+                             (e.g., "saving label to index", "writing print log")
+    
+    Returns:
+        bool: True if lock was acquired, False if already locked
+    """
+    global current_operation
+    if restart_lock.acquire(blocking=False):
+        current_operation = operation_name
+        return True
+    return False
+
+def release_restart_lock():
+    """
+    Release the restart lock and clear the current operation tracking.
+    
+    This function is safe to call even if the lock wasn't acquired.
+    """
+    global current_operation
+    try:
+        restart_lock.release()
+        current_operation = None
+    except RuntimeError:
+        pass  # Lock was not acquired - this is normal and safe to ignore
+
+def schedule_restart():
+    """
+    Schedule the next auto-restart timer.
+    
+    This function cancels any existing timer and creates a new one.
+    The timer runs as a daemon thread so it won't prevent the main process from exiting.
+    """
+    global restart_timer
+    if restart_timer:
+        restart_timer.cancel()
+    restart_timer = threading.Timer(restart_interval, perform_restart)
+    restart_timer.daemon = True
+    restart_timer.start()
+
+def perform_restart():
+    """
+    Perform a graceful restart of the server.
+    
+    This function is called by the auto-restart timer. It attempts to acquire
+    the restart lock to ensure no critical operations are in progress. If the
+    lock cannot be acquired within 10 seconds, the restart is delayed and
+    rescheduled for later.
+    """
+    print(f"[{datetime.now().isoformat()}] Auto-restart scheduled...")
+    
+    # Wait for any critical operations to complete (up to 10 seconds)
+    if restart_lock.acquire(timeout=10):
+        restart_lock.release()
+        print(f"[{datetime.now().isoformat()}] Performing graceful restart...")
+        
+        # Send restart signal to main process
+        os.kill(os.getpid(), signal.SIGTERM)
+    else:
+        print(f"[{datetime.now().isoformat()}] Restart delayed - critical operation in progress")
+        # Reschedule restart for later to try again
+        schedule_restart()
+
+def signal_handler(signum, frame):
+    """
+    Handle restart signals gracefully.
+    
+    This function is called when the server receives a SIGTERM or SIGINT signal.
+    It logs the restart and exits cleanly, allowing the batch file to restart
+    the server automatically.
+    
+    Args:
+        signum: The signal number
+        frame: The current stack frame
+    """
+    print(f"[{datetime.now().isoformat()}] Received restart signal, shutting down gracefully...")
+    sys.exit(0)
+
+# Set up signal handlers for graceful shutdown
+signal.signal(signal.SIGTERM, signal_handler)  # Handle termination signals
+signal.signal(signal.SIGINT, signal_handler)   # Handle Ctrl+C
 
 ###############################################################################
 # CONFIG / PATHS
@@ -60,7 +171,15 @@ plant_tag_db = PlantTagDatabase()
 ###############################################################################
 
 def main():
-    pass
+    """
+    Initialize the server and start the auto-restart timer.
+    
+    This function is called when the server starts and sets up the auto-restart
+    system to prevent search bugs that occur during extended server operation.
+    """
+    # Start the auto-restart timer
+    schedule_restart()
+    print(f"[{datetime.now().isoformat()}] Auto-restart timer started (every {restart_interval} seconds)")
 
 def load_templates():
     """
@@ -169,49 +288,78 @@ def append_to_saved_index(entry):
     """
     Appends a record to saved-label-index.json, creating if needed.
     Only called when /save_label is used.
+    
+    This function is protected by the restart lock to prevent server restart
+    during the critical file write operation.
+    
+    Args:
+        entry (dict): The label record to append to the index
     """
-    index_path = os.path.join(app.root_path, SAVED_INDEX_FILE)
-    if os.path.exists(index_path):
-        with open(index_path, 'r', encoding='utf-8') as f:
-            records = json.load(f)
-    else:
-        records = []
+    # Acquire restart lock to prevent restart during file write
+    if not acquire_restart_lock("saving label to index"):
+        print("Warning: Could not acquire restart lock for save operation")
+    
+    try:
+        index_path = os.path.join(app.root_path, SAVED_INDEX_FILE)
+        if os.path.exists(index_path):
+            with open(index_path, 'r', encoding='utf-8') as f:
+                records = json.load(f)
+        else:
+            records = []
 
-    records.append(entry)
+        records.append(entry)
 
-    with open(index_path, 'w', encoding='utf-8') as f:
-        json.dump(records, f, indent=2)
+        with open(index_path, 'w', encoding='utf-8') as f:
+            json.dump(records, f, indent=2)
+    finally:
+        # Always release the lock, even if an exception occurs
+        release_restart_lock()
 
 def append_to_print_log(session_id, copies):
     """
     Appends a record to print-log.json containing the form data, template,
     and offset adjustments used to generate the label. These are loaded from temp_label_store.
+    
+    This function is protected by the restart lock to prevent server restart
+    during the critical file write operation.
+    
+    Args:
+        session_id (str): The session identifier
+        copies (int): Number of copies printed
     """
-    log_path = os.path.join(app.root_path, PRINT_LOG_FILE)
-    if os.path.exists(log_path):
-        with open(log_path, 'r', encoding='utf-8') as f:
-            logs = json.load(f)
-    else:
-        logs = []
+    # Acquire restart lock to prevent restart during file write
+    if not acquire_restart_lock("writing print log"):
+        print("Warning: Could not acquire restart lock for log operation")
+    
+    try:
+        log_path = os.path.join(app.root_path, PRINT_LOG_FILE)
+        if os.path.exists(log_path):
+            with open(log_path, 'r', encoding='utf-8') as f:
+                logs = json.load(f)
+        else:
+            logs = []
 
-    entry_data = temp_label_store.get(session_id, {})
-    used_formdata = entry_data.get('used_formdata', {})
-    label_template = entry_data.get('label_template', {})
-    offset_adjustment = entry_data.get('offset_adjustment', (0, 0))
+        entry_data = temp_label_store.get(session_id, {})
+        used_formdata = entry_data.get('used_formdata', {})
+        label_template = entry_data.get('label_template', {})
+        offset_adjustment = entry_data.get('offset_adjustment', (0, 0))
 
-    log_entry = {
-        "session_id": session_id,
-        "count": copies,
-        "formdata": used_formdata,        # the data used in generate_png
-        "offset_adjustment": offset_adjustment, # the offset adjustments applied
-        "label_template": label_template, # the template used
-        "unix_time": int(datetime.now().timestamp()),
-        "time": datetime.now().isoformat()
-    }
-    logs.append(log_entry)
+        log_entry = {
+            "session_id": session_id,
+            "count": copies,
+            "formdata": used_formdata,        # the data used in generate_png
+            "offset_adjustment": offset_adjustment, # the offset adjustments applied
+            "label_template": label_template, # the template used
+            "unix_time": int(datetime.now().timestamp()),
+            "time": datetime.now().isoformat()
+        }
+        logs.append(log_entry)
 
-    with open(log_path, 'w', encoding='utf-8') as f:
-        json.dump(logs, f, indent=2)
+        with open(log_path, 'w', encoding='utf-8') as f:
+            json.dump(logs, f, indent=2)
+    finally:
+        # Always release the lock, even if an exception occurs
+        release_restart_lock()
 
 def print_label_file(image_path, copies, session_id=None):
     """
@@ -561,6 +709,61 @@ def migrate_data():
         return jsonify({
             "success": False,
             "error": f"Migration failed: {str(e)}"
+        }), 500
+
+@app.route('/restart-server', methods=['POST'])
+def restart_server():
+    """
+    Manual restart endpoint triggered by the client interface.
+    
+    This endpoint allows users to manually restart the server through the web interface.
+    It checks if the server is busy with critical operations and provides appropriate
+    feedback to the user.
+    
+    Request body (optional):
+        force (bool): If true, restart even if server is busy
+    
+    Returns:
+        JSON response with success status and appropriate message
+    """
+    try:
+        data = request.get_json() or {}
+        force_restart = data.get('force', False)
+        
+        # Check if server is busy by attempting to acquire the lock
+        if restart_lock.acquire(blocking=False):
+            restart_lock.release()
+            print(f"[{datetime.now().isoformat()}] Manual restart requested by client")
+            
+            # Schedule restart for next tick (1 second delay)
+            threading.Timer(1.0, lambda: os.kill(os.getpid(), signal.SIGTERM)).start()
+            
+            return jsonify({
+                "success": True,
+                "message": "Server restart scheduled"
+            })
+        else:
+            # Server is busy - determine what operation is running
+            lock_text = current_operation or "saving tag or writing log"
+            
+            if force_restart:
+                print(f"[{datetime.now().isoformat()}] Force restart requested by client (ignoring lock)")
+                threading.Timer(1.0, lambda: os.kill(os.getpid(), signal.SIGTERM)).start()
+                return jsonify({
+                    "success": True,
+                    "message": "Force restart scheduled"
+                })
+            else:
+                # Return lock information so client can show user-friendly message
+                return jsonify({
+                    "success": False,
+                    "lock_text": lock_text,
+                    "message": "Server is busy with critical operation"
+                }), 503
+    except Exception as e:
+        return jsonify({
+            "success": False,
+            "error": f"Restart failed: {str(e)}"
         }), 500
 
 @app.route('/print_existing_label', methods=['POST'])
