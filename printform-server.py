@@ -608,15 +608,23 @@ def search_labels():
             # Remove 'label_' prefix and '.png' suffix for search
             searchable_name = filename[6:-4].lower()
             
-            # Extract plant info from filename
-            # Format: label_plant-name_cultivar_description_date.png
-            parts = searchable_name.split('_')
+            # First, for the plant info display, split by underscore to get the date
+            name_parts = searchable_name.split('_')
             
-            # Create a list of all words in the filename (excluding date)
-            filename_words = []
-            for i, part in enumerate(parts[:-1]):  # Exclude the date part
-                # Split each part by hyphens to get individual words
-                filename_words.extend(part.split('-'))
+            # For search:
+            # 1. Treat ALL word-separating characters (dashes, underscores, spaces) as word boundaries
+            # 2. Replace any sequence of these separators with a single space
+            # This means:
+            #   "word--word" -> "word word"
+            #   "word_word" -> "word word"
+            #   "word - _ word" -> "word word"
+            #   "word_-_word" -> "word word"
+            import re
+            normalized = re.sub(r'[-_\s]+', ' ', searchable_name)
+            
+            # Get all words (excluding the date which is the last component)
+            all_words = normalized.split()
+            filename_words = all_words[:-1] if all_words else []
             
             # Check if all query terms match somewhere in the filename
             all_terms_match = True
@@ -657,10 +665,10 @@ def search_labels():
                     'full_path': f'/static/labels/generated_labels/{filename}',
                     'similarity': best_similarity,
                     'mod_time': mod_time,
-                    'plant_name': parts[0] if len(parts) > 0 else '',
-                    'cultivar': parts[1] if len(parts) > 1 else '',
-                    'description': '_'.join(parts[2:-1]) if len(parts) > 2 else '',
-                    'date': parts[-1] if len(parts) > 0 else ''
+                    'plant_name': name_parts[0] if len(name_parts) > 0 else '',
+                    'cultivar': name_parts[1] if len(name_parts) > 1 else '',
+                    'description': '_'.join(name_parts[2:-1]) if len(name_parts) > 2 else '',
+                    'date': name_parts[-1] if len(name_parts) > 0 else ''
                 }
                 
                 results.append(plant_info)
