@@ -1,3 +1,45 @@
+// Global variables
+let sessionId = null;
+let debounceTimer = null;
+const DEBOUNCE_DELAY = 300;
+
+// Global functions for preview updates
+function updatePreview() {
+  const labelForm = document.getElementById('label-form');
+  const labelImage = document.getElementById('label-image');
+  const printControls = document.getElementById('print-controls');
+
+  const formData = new FormData(labelForm);
+  formData.append('session_id', sessionId);
+  formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+  formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+
+  fetch('/preview_label', {
+    method: 'POST',
+    body: formData
+  })
+  .then(r => r.json())
+  .then(data => {
+    console.log('Preview response:', data);
+    if (data.image_path) {
+      const cacheBuster = new Date().getTime();
+      labelImage.src = `${data.image_path}?v=${cacheBuster}`;
+      labelImage.style.display = 'block';
+      printControls.style.display = 'block';
+    } else if (data.error) {
+      console.error('Preview error:', data.error);
+    }
+  })
+  .catch(err => console.error('Preview error:', err));
+}
+
+function debouncedPreview() {
+  if (debounceTimer) {
+    clearTimeout(debounceTimer);
+  }
+  debounceTimer = setTimeout(updatePreview, DEBOUNCE_DELAY);
+}
+
 var template = {
     "fields": [
         {
@@ -418,20 +460,309 @@ function checkDeleteButtons() {
 }
 
 document.addEventListener('DOMContentLoaded', () => {
+    // Initialize session ID
+    sessionId = 'session_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+    
     // Assuming you have your existing init function or similar setup here
 
     // Add event listeners to the new buttons
-    document.getElementById('x-offset-up').addEventListener('click', () => {
-        adjustYOffset(7); // Increase Y offset by 7
+    // Print one label
+    // Offset button listeners
+    const xOffsetDown = document.getElementById('x-offset-down');
+    console.log('Looking for x-offset-down:', xOffsetDown);
+    if (xOffsetDown) {
+      console.log('Found x-offset-down, adding event listener');
+      xOffsetDown.addEventListener('click', (event) => {
+        console.log('x-offset-down clicked!');
+      const xOffsetInput = document.getElementById('x-offset');
+      const stepVal = parseFloat(xOffsetInput.step) || 1;
+      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) - stepVal;
+      if (Number.isInteger(stepVal)) { xOffsetInput.value = String(Math.round(xOffsetInput.value)); } else { xOffsetInput.value = String(parseFloat(xOffsetInput.value)); }
+      if (event.shiftKey) { 
+        // Shift-click also prints
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+    
+    const xOffsetUp = document.getElementById('x-offset-up');
+    console.log('Looking for x-offset-up:', xOffsetUp);
+    if (xOffsetUp) {
+      console.log('Found x-offset-up, adding event listener');
+      xOffsetUp.addEventListener('click', (event) => {
+        console.log('x-offset-up clicked!');
+      const xOffsetInput = document.getElementById('x-offset');
+      const stepVal = parseFloat(xOffsetInput.step) || 1;
+      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) + stepVal;
+      if (Number.isInteger(stepVal)) { xOffsetInput.value = String(Math.round(xOffsetInput.value)); } else { xOffsetInput.value = String(parseFloat(xOffsetInput.value)); }
+      if (event.shiftKey) { 
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    // Y-offset buttons
+    const yOffsetDown = document.getElementById('y-offset-down');
+    console.log('Looking for y-offset-down:', yOffsetDown);
+    if (yOffsetDown) {
+      console.log('Found y-offset-down, adding event listener');
+      yOffsetDown.addEventListener('click', (event) => {
+        console.log('y-offset-down clicked!');
+      const yOffsetInput = document.getElementById('y-offset');
+      const stepVal = parseFloat(yOffsetInput.step) || 1;
+      yOffsetInput.value = (parseFloat(yOffsetInput.value) || 0) - stepVal;
+      if (Number.isInteger(stepVal)) { yOffsetInput.value = String(Math.round(yOffsetInput.value)); } else { yOffsetInput.value = String(parseFloat(yOffsetInput.value)); }
+      if (event.shiftKey) {
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    const yOffsetUp = document.getElementById('y-offset-up');
+    console.log('Looking for y-offset-up:', yOffsetUp);
+    if (yOffsetUp) {
+      console.log('Found y-offset-up, adding event listener');
+      yOffsetUp.addEventListener('click', (event) => {
+        console.log('y-offset-up clicked!');
+      const yOffsetInput = document.getElementById('y-offset');
+      const stepVal = parseFloat(yOffsetInput.step) || 1;
+      yOffsetInput.value = (parseFloat(yOffsetInput.value) || 0) + stepVal;
+      if (Number.isInteger(stepVal)) { yOffsetInput.value = String(Math.round(yOffsetInput.value)); } else { yOffsetInput.value = String(parseFloat(yOffsetInput.value)); }
+      if (event.shiftKey) {
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    // Default offset buttons
+    const defaultXOffsetDown = document.getElementById('default_x_offset_down');
+    console.log('Looking for default_x_offset_down:', defaultXOffsetDown);
+    if (defaultXOffsetDown) {
+      console.log('Found default_x_offset_down, adding event listener');
+      defaultXOffsetDown.addEventListener('click', (event) => {
+        console.log('default_x_offset_down clicked!');
+      const xOffsetInput = document.getElementById('default_x_offset');
+      const stepVal = parseFloat(xOffsetInput.step) || 1;
+      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) - stepVal;
+      if (Number.isInteger(stepVal)) { xOffsetInput.value = String(Math.round(xOffsetInput.value)); } else { xOffsetInput.value = String(parseFloat(xOffsetInput.value)); }
+      if (event.shiftKey) {
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    const defaultXOffsetUp = document.getElementById('default_x_offset_up');
+    console.log('Looking for default_x_offset_up:', defaultXOffsetUp);
+    if (defaultXOffsetUp) {
+      console.log('Found default_x_offset_up, adding event listener');
+      defaultXOffsetUp.addEventListener('click', (event) => {
+        console.log('default_x_offset_up clicked!');
+      const xOffsetInput = document.getElementById('default_x_offset');
+      const stepVal = parseFloat(xOffsetInput.step) || 1;
+      xOffsetInput.value = (parseFloat(xOffsetInput.value) || 0) + stepVal;
+      if (Number.isInteger(stepVal)) { xOffsetInput.value = String(Math.round(xOffsetInput.value)); } else { xOffsetInput.value = String(parseFloat(xOffsetInput.value)); }
+      if (event.shiftKey) {
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    const defaultYOffsetDown = document.getElementById('default_y_offset_down');
+    console.log('Looking for default_y_offset_down:', defaultYOffsetDown);
+    if (defaultYOffsetDown) {
+      console.log('Found default_y_offset_down, adding event listener');
+      defaultYOffsetDown.addEventListener('click', (event) => {
+        console.log('default_y_offset_down clicked!');
+      const yOffsetInput = document.getElementById('default_y_offset');
+      const stepVal = parseFloat(yOffsetInput.step) || 1;
+      yOffsetInput.value = (parseFloat(yOffsetInput.value) || 0) - stepVal;
+      if (Number.isInteger(stepVal)) { yOffsetInput.value = String(Math.round(yOffsetInput.value)); } else { yOffsetInput.value = String(parseFloat(yOffsetInput.value)); }
+      if (event.shiftKey) {
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    const defaultYOffsetUp = document.getElementById('default_y_offset_up');
+    console.log('Looking for default_y_offset_up:', defaultYOffsetUp);
+    if (defaultYOffsetUp) {
+      console.log('Found default_y_offset_up, adding event listener');
+      defaultYOffsetUp.addEventListener('click', (event) => {
+        console.log('default_y_offset_up clicked!');
+      const yOffsetInput = document.getElementById('default_y_offset');
+      const stepVal = parseFloat(yOffsetInput.step) || 1;
+      yOffsetInput.value = (parseFloat(yOffsetInput.value) || 0) + stepVal;
+      if (Number.isInteger(stepVal)) { yOffsetInput.value = String(Math.round(yOffsetInput.value)); } else { yOffsetInput.value = String(parseFloat(yOffsetInput.value)); }
+      if (event.shiftKey) {
+        const labelForm = document.getElementById('label-form');
+        const formData = new FormData(labelForm);
+        formData.append('session_id', sessionId);
+        formData.append('default_x_offset', document.getElementById('default_x_offset').value);
+        formData.append('default_y_offset', document.getElementById('default_y_offset').value);
+        fetch('/preview_label', { method: 'POST', body: formData })
+          .then(r => r.json())
+          .then(data => {
+            if (data.image_path) {
+              const labelImage = document.getElementById('label-image');
+              labelImage.src = `${data.image_path}?v=${new Date().getTime()}`;
+              labelImage.style.display = 'block';
+              document.getElementById('print-one-btn').click();
+            }
+          })
+          .catch(err => console.error('Preview error:', err));
+      } else {
+        debouncedPreview();
+      }
+      });
+    }
+
+    // ADD SCROLL-WHEEL HANDLERS FOR NUMERIC INPUTS
+    document.querySelectorAll('input[type="number"]').forEach(numberInput => {
+      numberInput.addEventListener('wheel', (e) => {
+        e.preventDefault();
+
+        const stepValue = parseFloat(numberInput.step) || 1;
+        let currentVal = parseFloat(numberInput.value) || 0;
+
+        if (e.deltaY < 0) {
+          currentVal += stepValue;
+        } else {
+          currentVal -= stepValue;
+        }
+
+        if (Number.isInteger(stepValue)) {
+          currentVal = Math.round(currentVal);
+        } else {
+          currentVal = parseFloat(currentVal.toString());
+        }
+        numberInput.value = String(currentVal);
+
+        debouncedPreview();
+      }, { passive: false });
     });
 
-    document.getElementById('x-offset-down').addEventListener('click', () => {
-        adjustYOffset(-7); // Decrease Y offset by 7
+    // Attach input handlers for fields that need a preview update
+    document.querySelectorAll('.debounced-field').forEach(field => {
+      field.addEventListener('input', debouncedPreview);
     });
-});
 
-function adjustYOffset(amount) {
-    const yOffsetInput = document.getElementById('x-offset');
-    yOffsetInput.value = parseInt(yOffsetInput.value) + amount;
-    document.getElementById('gen-btn').click();
-}
+    // Database migration button with confirmation

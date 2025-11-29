@@ -21,7 +21,7 @@ if "%firstRun%"=="true" (
     echo Server is up. Launching companion programs...
     start "" "C:\Program Files\Mozilla Firefox\firefox.exe" "http://127.0.0.1:5000"
     start "" "C:\Program Files\Everything\Everything.exe"
-    start "" explorer "C:\Users\dvchort\Desktop\printform\static\labels\generated_labels"
+    REM start "" explorer "C:\Users\dvchort\Desktop\printform\static\labels\generated_labels"
     set firstRun=false
 )
 

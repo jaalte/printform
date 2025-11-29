@@ -242,7 +242,7 @@ def offset_image(img, dx, dy):
 
     return offset_img
 
-def generate_png(template, formdata, offset_adjustment):
+def generate_png(template, formdata, offset_adjustment, default_alignment=(0, 0)):
     """
     Generates the label image in memory according to
     the template, formdata, and offset_adjustment.
@@ -279,9 +279,9 @@ def generate_png(template, formdata, offset_adjustment):
             font = ImageFont.truetype(font_path, font_size)
             d.text((x, y), text, font=font, fill=(0, 0, 0), spacing=spacing)
 
-    # Apply offsets - combine template offsets with adjustment
-    dx = template["offsets"][0] + offset_adjustment[0]
-    dy = template["offsets"][1] + offset_adjustment[1]
+    # Apply offsets - combine template offsets with adjustment and default alignment
+    dx = template["offsets"][0] + offset_adjustment[0] + default_alignment[0]
+    dy = template["offsets"][1] + offset_adjustment[1] + default_alignment[1]
     return offset_image(img, dx, dy)
 
 def append_to_saved_index(entry):
@@ -343,12 +343,14 @@ def append_to_print_log(session_id, copies):
         used_formdata = entry_data.get('used_formdata', {})
         label_template = entry_data.get('label_template', {})
         offset_adjustment = entry_data.get('offset_adjustment', (0, 0))
+        default_alignment = entry_data.get('default_alignment', (0, 0))
 
         log_entry = {
             "session_id": session_id,
             "count": copies,
             "formdata": used_formdata,        # the data used in generate_png
             "offset_adjustment": offset_adjustment, # the offset adjustments applied
+            "default_alignment": default_alignment, # the default alignment applied
             "label_template": label_template, # the template used
             "unix_time": int(datetime.now().timestamp()),
             "time": datetime.now().isoformat()
@@ -455,12 +457,17 @@ def preview_label():
         int(request.form.get('y-offset', 0))
     )
 
+    # Get default alignment adjustments
+    default_x_align = int(request.form.get('default_x_offset', 0))
+    default_y_align = int(request.form.get('default_y_offset', 0))
+    default_alignment = (default_x_align, default_y_align)
+
     # Identify relevant field names
     fieldnames = [field["name"] for field in template['fields']]
     used_formdata = {name: request.form.get(name, '') for name in fieldnames}
 
     # Generate the in-memory label
-    img = generate_png(template, used_formdata, offset_adjustment)
+    img = generate_png(template, used_formdata, offset_adjustment, default_alignment)
 
     # Construct the preview file path
     preview_filename = f"preview_{session_id}.png"
@@ -475,6 +482,7 @@ def preview_label():
         "used_formdata": used_formdata,       # data used to generate the label
         "label_template": template,           # the template used
         "offset_adjustment": offset_adjustment, # the offset adjustments applied
+        "default_alignment": default_alignment, # ADDED: default alignment applied
         "date_created": datetime.now().isoformat(),
         "preview_filename": preview_filename,
     }
@@ -563,7 +571,9 @@ def save_label():
         "filepath": new_rel_path,
         "date_created": entry_data["date_created"],
         "formdata": entry_data["used_formdata"],
-        "label_template": entry_data["label_template"]
+        "label_template": entry_data["label_template"],
+        "offset_adjustment": entry_data.get("offset_adjustment", (0,0)),
+        "default_alignment": entry_data.get("default_alignment", (0,0))
     }
     append_to_saved_index(record)
 
