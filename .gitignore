@@ -12,3 +12,5 @@ plant_tags.db
 utility-scripts/orphan-labels/
 utility-scripts/conflicts.json
 utility-scripts/orphan-logs.csv
+archive
+archive/*
